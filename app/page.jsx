@@ -4,7 +4,7 @@ import HeroCarousel from "@/components/HeroCarousel";
 import ProductCard from "@/components/ProductCard";
 import { TrustBadges, CategoryGrid, SectionHeader } from "@/components/ui";
 import Icon from "@/components/Icon";
-import { featured, phones, byCategory } from "@/lib/data";
+import { getFeatured, getPhones, getByCategory } from "@/lib/store";
 
 export const metadata = {
   title: "Apple Network — New & Used Phones, Accessories & Electronics BD",
@@ -12,10 +12,12 @@ export const metadata = {
     "Bangladesh's trusted store for new & used phones (official & unofficial), accessories, laptops, tablets & more. Free delivery, EMI up to 36 months, exchange offers.",
 };
 
-export default function HomePage() {
-  const feat = featured();
-  const phoneList = phones().slice(0, 4);
-  const acc = byCategory("accessories").slice(0, 4);
+export default async function HomePage() {
+  const [feat, phoneList, acc] = await Promise.all([
+    getFeatured(),
+    getPhones(),
+    getByCategory("accessories"),
+  ]);
 
   return (
     <>

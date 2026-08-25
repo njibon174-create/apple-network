@@ -2,7 +2,8 @@
 import { notFound } from "next/navigation";
 import ProductCard from "@/components/ProductCard";
 import { PageHero, Breadcrumb } from "@/components/ui";
-import { CATEGORIES, BRANDS, CONDITIONS, byCategory } from "@/lib/data";
+import { CATEGORIES, BRANDS, CONDITIONS } from "@/lib/data";
+import { getByCategory } from "@/lib/store";
 
 // Pre-render all category slugs
 export function generateStaticParams() {
@@ -28,10 +29,10 @@ export function generateMetadata({ params }) {
   };
 }
 
-export default function CategoryPage({ params }) {
+export default async function CategoryPage({ params }) {
   const cat = CATEGORIES.find((c) => c.slug === params.slug);
   if (!cat) return notFound();
-  const items = byCategory(cat.slug);
+  const items = await getByCategory(cat.slug);
   const isPhones = cat.slug === "phones";
 
   return (

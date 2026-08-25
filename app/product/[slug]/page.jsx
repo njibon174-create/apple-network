@@ -5,9 +5,14 @@ import ProductCard from "@/components/ProductCard";
 import ProductDetail from "@/components/ProductDetail";
 import { Breadcrumb } from "@/components/ui";
 import Icon from "@/components/Icon";
-import { PRODUCTS, getProduct, byCategory, CATEGORIES } from "@/lib/data";
+import { CATEGORIES, PRODUCTS } from "@/lib/data";
+import { getProduct, getByCategory, getProducts } from "@/lib/store";
 
-export function generateStaticParams() {
+export async function generateStaticParams() {
+  try {
+    const live = await getProducts({ limit: 100 });
+    if (live.length) return live.map((p) => ({ slug: p.slug }));
+  } catch {}
   return PRODUCTS.map((p) => ({ slug: p.slug }));
 }
 
@@ -21,11 +26,11 @@ export function generateMetadata({ params }) {
   };
 }
 
-export default function ProductPage({ params }) {
-  const p = getProduct(params.slug);
+export default async function ProductPage({ params }) {
+  const p = await getProduct(params.slug);
   if (!p) return notFound();
   const cat = CATEGORIES.find((c) => c.slug === p.category);
-  const related = byCategory(p.category).filter((x) => x.slug !== p.slug).slice(0, 4);
+  const related = (await getByCategory(p.category)).filter((x) => x.slug !== p.slug).slice(0, 4);
 
   // Product schema (JSON-LD) — SEO rich result
   const schema = {

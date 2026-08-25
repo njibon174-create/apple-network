@@ -4,13 +4,16 @@ import ProductCard from "@/components/ProductCard";
 import { PageHero } from "@/components/ui";
 import Icon from "@/components/Icon";
 import { PRODUCTS, CATEGORIES } from "@/lib/data";
+import { getProducts } from "@/lib/store";
 
 export const metadata = {
   title: "Shop All Phones & Electronics — Apple Network Bangladesh",
   description: "Browse Apple Network's full catalog: new & used phones, accessories, laptops, tablets, smartwatches, smart TVs & gadgets. Filter by price, brand & condition.",
 };
 
-export default function ShopPage() {
+export default async function ShopPage() {
+  const products = await getProducts();
+  const count = products.length;
   return (
     <>
       <PageHero title="সব প্রোডাক্ট" sub="নতুন স্মার্টফোন থেকে প্রিলাভড ফোন, ফ্ল্যাগশিপ থেকে বাজেট — সব এক জায়গায়। ক্যাটাগরি, দাম বা কন্ডিশন দিয়ে ফিল্টার করুন।" />
@@ -35,7 +38,7 @@ export default function ShopPage() {
         {/* Product grid */}
         <div className="flex-1">
           <div className="mb-4 flex items-center justify-between">
-            <p className="text-sm text-ink-muted">{PRODUCTS.length.toLocaleString("bn-BD")}টি প্রোডাক্ট</p>
+            <p className="text-sm text-ink-muted">{count.toLocaleString("bn-BD")}টি প্রোডাক্ট</p>
             <select className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-ink-soft outline-none">
               <option>জনপ্রিয়তা অনুযায়ী</option>
               <option>দাম: কম → বেশি</option>
@@ -44,7 +47,7 @@ export default function ShopPage() {
             </select>
           </div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-            {PRODUCTS.map((p) => <ProductCard key={p.slug} p={p} />)}
+            {products.map((p) => <ProductCard key={p.slug} p={p} />)}
           </div>
         </div>
       </div>

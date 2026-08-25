@@ -1,23 +1,52 @@
-// app/search/page.jsx — PAGE 15: Search Results (client-side filter over sample data)
+// app/search/page.jsx — PAGE 15: Search Results (client-side, live Supabase)
 "use client";
 import Link from "next/link";
-import { useState, useMemo, Suspense } from "react";
+import { useState, useMemo, Suspense, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import ProductCard from "@/components/ProductCard";
 import { PRODUCTS } from "@/lib/data";
+import { createClient } from "@supabase/auth-helpers-nextjs";
+
+function normalize(row) {
+  const storage = Array.isArray(row.storages) && row.storages.length ? row.storages[0] : undefined;
+  const ram = Array.isArray(row.rams) && row.rams.length ? row.rams[0] : undefined;
+  return {
+    slug: row.slug, name: row.name, brand: row.brand, category: row.category_slug,
+    price: row.price_bdt, regularPrice: row.regular_price_bdt ?? null,
+    storage, ram, badge: row.badge ?? null, emiFrom: row.emi_from_bdt ?? null,
+    inStock: row.in_stock, rating: row.rating ?? 0, reviews: row.review_count ?? 0,
+    image: row.image_primary,
+  };
+}
 
 function SearchInner() {
   const params = useSearchParams();
   const initial = params.get("q") || "";
   const [q, setQ] = useState(initial);
+  const [all, setAll] = useState(PRODUCTS);
+
+  useEffect(() => {
+    let active = true;
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (!url || !key) return; // fallback to sample data
+    (async () => {
+      try {
+        const sb = createClient(url, key);
+        const { data, error } = await sb.from("v_products_full").select("*");
+        if (!error && data && active) setAll(data.map(normalize));
+      } catch {}
+    })();
+    return () => { active = false; };
+  }, []);
 
   const results = useMemo(() => {
     const term = q.trim().toLowerCase();
-    if (!term) return PRODUCTS;
-    return PRODUCTS.filter((p) =>
+    if (!term) return all;
+    return all.filter((p) =>
       [p.name, p.brand, p.category].join(" ").toLowerCase().includes(term)
     );
-  }, [q]);
+  }, [q, all]);
 
   return (
     <div className="container-x mt-6">
