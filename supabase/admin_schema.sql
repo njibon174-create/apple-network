@@ -1,0 +1,135 @@
+-- supabase/admin_schema.sql
+-- Why: admin panel backend. Adds owner auth (profiles + role), customer message inbox,
+-- and the accounting/inventory foundation (purchases, stock_ledger, expenses,
+-- cash_transactions, returns). Phase A uses profiles + inquiries + orders; later
+-- phases use the rest. Run in Supabase SQL Editor (or via the management API).
+
+-- ============================================
+-- ADMIN / AUTH
+-- ============================================
+
+-- Profiles: one row per auth user, with role.
+CREATE TABLE IF NOT EXISTS profiles (
+  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  full_name TEXT,
+  role TEXT NOT NULL DEFAULT 'owner',   -- 'owner' | 'staff'
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Auto-create a profile row when a new auth user signs up.
+CREATE OR REPLACE FUNCTION handle_new_user() RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.profiles (id, full_name, role)
+  VALUES (NEW.id, NEW.raw_user_meta_data->>'full_name', COALESCE(NEW.raw_user_meta_data->>'role', 'owner'))
+  ON CONFLICT (id) DO NOTHING;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION handle_new_user();
+
+-- RLS for profiles: user sees/updates own row; owner sees all.
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "profiles_self" ON profiles FOR SELECT TO authenticated USING (auth.uid() = id);
+CREATE POLICY "profiles_owner_all" ON profiles FOR ALL TO authenticated USING (
+  EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role = 'owner')
+) WITH CHECK (
+  EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role = 'owner')
+);
+
+-- Helper: is the current user an owner? Used by other admin-table policies.
+CREATE OR REPLACE FUNCTION is_owner() RETURNS BOOLEAN AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'owner'
+  );
+$$ LANGUAGE sql STABLE SECURITY DEFINER;
+
+-- ============================================
+-- CUSTOMER MESSAGES / INQUIRIES (from the site)
+-- ============================================
+CREATE TABLE IF NOT EXISTS inquiries (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  phone TEXT,
+  email TEXT,
+  subject TEXT,
+  message TEXT NOT NULL,
+  order_number TEXT,                -- optional: linked to an order
+  status TEXT DEFAULT 'new',        -- new | replied | closed
+  admin_reply TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE inquiries ENABLE ROW LEVEL SECURITY;
+-- Public can insert (contact form); only owner can read/update.
+CREATE POLICY "inquiries_insert" ON inquiries FOR INSERT TO public WITH CHECK (true);
+CREATE POLICY "inquiries_owner" ON inquiries FOR ALL TO authenticated USING (is_owner()) WITH CHECK (is_owner());
+
+-- ============================================
+-- INVENTORY / PURCHASES / STOCK
+-- ============================================
+CREATE TABLE IF NOT EXISTS purchases (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  product_id UUID REFERENCES products(id) ON DELETE SET NULL,
+  product_name TEXT NOT NULL,        -- snapshot
+  supplier TEXT,
+  qty INT NOT NULL CHECK (qty > 0),
+  unit_cost_bdt INT NOT NULL,        -- cost price paid
+  total_cost_bdt INT NOT NULL,
+  note TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS stock_ledger (
+  product_id UUID PRIMARY KEY REFERENCES products(id) ON DELETE CASCADE,
+  qty INT NOT NULL DEFAULT 0,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ============================================
+-- ACCOUNTING: CASH, EXPENSES, RETURNS
+-- ============================================
+CREATE TABLE IF NOT EXISTS expenses (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  category TEXT NOT NULL,            -- rent | salary | utility | transport | misc | other
+  amount_bdt INT NOT NULL,
+  note TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS cash_transactions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  type TEXT NOT NULL,                -- sale | expense | capital_in | capital_out | refund
+  amount_bdt INT NOT NULL,
+  ref TEXT,                          -- order_number / expense note
+  note TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS returns (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  order_id UUID REFERENCES orders(id) ON DELETE SET NULL,
+  order_number TEXT,
+  product_name TEXT,
+  reason TEXT,
+  refund_bdt INT NOT NULL DEFAULT 0,
+  restock BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- RLS: all accounting/inventory tables are owner-only.
+ALTER TABLE purchases ENABLE ROW LEVEL SECURITY;
+ALTER TABLE stock_ledger ENABLE ROW LEVEL SECURITY;
+ALTER TABLE expenses ENABLE ROW LEVEL SECURITY;
+ALTER TABLE cash_transactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE returns ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "purchases_owner" ON purchases FOR ALL TO authenticated USING (is_owner()) WITH CHECK (is_owner());
+CREATE POLICY "stock_ledger_owner" ON stock_ledger FOR ALL TO authenticated USING (is_owner()) WITH CHECK (is_owner());
+CREATE POLICY "expenses_owner" ON expenses FOR ALL TO authenticated USING (is_owner()) WITH CHECK (is_owner());
+CREATE POLICY "cash_owner" ON cash_transactions FOR ALL TO authenticated USING (is_owner()) WITH CHECK (is_owner());
+CREATE POLICY "returns_owner" ON returns FOR ALL TO authenticated USING (is_owner()) WITH CHECK (is_owner());
