@@ -1,8 +1,8 @@
 // app/layout.jsx
-// Why: root layout — global metadata (SEO), fonts, Header + Footer wrap every page.
+// Why: root layout — global metadata (SEO) + fonts. The store Header/Footer are
+// rendered by SiteChrome, which hides them on /admin and /login.
 import "./globals.css";
-import Header from "@/components/Header";
-import Footer from "@/components/Footer";
+import SiteChrome from "@/components/SiteChrome";
 
 export const metadata = {
   metadataBase: new URL("https://apple-network.bd"),
@@ -32,9 +32,8 @@ export default function RootLayout({ children }) {
   return (
     <html lang="bn">
       <body>
-        <Header />
+        <SiteChrome />
         <main className="min-h-[60vh]">{children}</main>
-        <Footer />
       </body>
     </html>
   );

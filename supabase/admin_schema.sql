@@ -31,16 +31,17 @@ CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION handle_new_user();
 
--- RLS for profiles: user sees/updates own row; owner sees all.
+-- RLS for profiles: each user sees/updates only their own row. NOTE: do NOT add an
+-- "owner sees all profiles" policy that queries `profiles` inside its own USING
+-- clause — that causes infinite recursion ("infinite recursion detected in policy
+-- for relation profiles"). is_owner() is SECURITY DEFINER so its internal profiles
+-- lookup bypasses RLS.
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "profiles_self" ON profiles FOR SELECT TO authenticated USING (auth.uid() = id);
-CREATE POLICY "profiles_owner_all" ON profiles FOR ALL TO authenticated USING (
-  EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role = 'owner')
-) WITH CHECK (
-  EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role = 'owner')
-);
+CREATE POLICY "profiles_self_write" ON profiles FOR UPDATE TO authenticated USING (auth.uid() = id) WITH CHECK (auth.uid() = id);
 
 -- Helper: is the current user an owner? Used by other admin-table policies.
+-- SECURITY DEFINER so the internal profiles lookup does not recurse on RLS.
 CREATE OR REPLACE FUNCTION is_owner() RETURNS BOOLEAN AS $$
   SELECT EXISTS (
     SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'owner'

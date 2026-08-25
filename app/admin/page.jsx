@@ -1,9 +1,13 @@
 // app/admin/page.jsx — Admin dashboard with charts (Phase A)
 import Link from "next/link";
+import nextDynamic from "next/dynamic";
 import { createClient } from "@/lib/supabase/server";
 import { taka } from "@/lib/data";
 import Icon from "@/components/Icon";
-import { RevenueChart, StatusChart, CategoryChart } from "./DashboardCharts";
+
+// Charts are client-only (Recharts measures the DOM); load without SSR to avoid
+// hydration/blank-render issues on the server.
+const ChartPanel = nextDynamic(() => import("./DashboardCharts"), { ssr: false });
 
 export const dynamic = "force-dynamic";
 
@@ -91,11 +95,11 @@ export default async function AdminDashboard() {
       </div>
 
       <div className="mt-6 grid gap-4 lg:grid-cols-2">
-        <RevenueChart data={revenueData} />
-        <StatusChart data={statusData} />
-      </div>
-      <div className="mt-4">
-        <CategoryChart data={categoryData} />
+        <ChartPanel
+          revenueData={revenueData}
+          statusData={statusData}
+          categoryData={categoryData}
+        />
       </div>
 
       <div className="mt-6 rounded-xl border border-gray-100 bg-white p-5">
