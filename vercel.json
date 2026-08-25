@@ -6,8 +6,8 @@
   "outputDirectory": ".next",
   "regions": ["sin1"],
   "env": {
-    "NEXT_PUBLIC_SUPABASE_URL": "@apple-network-supabase-url",
-    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "@apple-network-supabase-anon-key"
+    "NEXT_SUPABASE_URL": "@apple-network-supabase-url",
+    "NEXT_SUPABASE_ANON_KEY": "@apple-network-supabase-anon-key"
   },
   "github": {
     "silent": true

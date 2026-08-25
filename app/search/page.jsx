@@ -27,8 +27,8 @@ function SearchInner() {
 
   useEffect(() => {
     let active = true;
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    const url = process.env.NEXT_SUPABASE_URL;
+    const key = process.env.NEXT_SUPABASE_ANON_KEY;
     if (!url || !key) return; // fallback to sample data
     (async () => {
       try {
