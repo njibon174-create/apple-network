@@ -15,11 +15,12 @@ export default function ProductDetail({ p }) {
   const colors = p.colors || [p.color, "সিলভার", "ব্লু", "গোল্ড"].filter(Boolean);
   const storages = p.storages || [p.storage, "256GB", "512GB"].filter(Boolean);
   const rams = p.rams || [p.ram, "8GB", "12GB"].filter(Boolean);
-  const conditions = [
-    p.official ? "নতুন (অফিশিয়াল)" : "নতুন (আনঅফিশিয়াল)",
-    "প্রিলাভড — Excellent",
-    "প্রিলাভড — Good",
-  ];
+  // Tags derived from the product (not user-selectable):
+  //   - New/Used from condition enum
+  //   - Official/Unofficial from official flag
+  const isUsed = p.condition && p.condition.startsWith("used");
+  const newUsedTag = isUsed ? "প্রিলাভড" : "নতুন";
+  const officialTag = p.official ? "অফিশিয়াল" : "আনঅফিশিয়াল";
 
   // De-dupe while preserving order (first item is the product's own value = default).
   const uniq = (arr) => [...new Set(arr)];
@@ -27,7 +28,6 @@ export default function ProductDetail({ p }) {
   const [color, setColor] = useState(colors[0]);
   const [storage, setStorage] = useState(storages[0]);
   const [ram, setRam] = useState(rams[0]);
-  const [condition, setCondition] = useState(conditions[0]);
   const [activeImg, setActiveImg] = useState(0);
   const [added, setAdded] = useState(false);
   const add = useCart((s) => s.add);
@@ -44,7 +44,7 @@ export default function ProductDetail({ p }) {
       color,
       storage,
       ram,
-      condition,
+      condition: p.condition,
       qty: 1,
     });
     setAdded(true);
@@ -107,14 +107,22 @@ export default function ProductDetail({ p }) {
               <VariantRow label="RAM" options={uniq(rams)} value={ram} onChange={setRam} />
             </>
           )}
-          <VariantRow label="কন্ডিশন" options={uniq(conditions)} value={condition} onChange={setCondition} />
+        </div>
+
+        {/* Tags: New/Used + Official/Unofficial */}
+        <div className="mt-4 flex flex-wrap gap-2">
+          <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold ${isUsed ? "bg-amber-100 text-amber-700" : "bg-green-100 text-green-700"}`}>
+            <Icon name={isUsed ? "RefreshCw" : "Sparkles"} size={13} /> {newUsedTag}
+          </span>
+          <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold ${p.official ? "bg-brand-light text-brand-700" : "bg-gray-100 text-ink-soft"}`}>
+            <Icon name="BadgeCheck" size={13} /> {officialTag}
+          </span>
         </div>
 
         {/* Selected summary — proves the selection is live */}
         <div className="mt-4 rounded-lg bg-gray-50 px-4 py-3 text-sm text-ink-soft">
           নির্বাচিত: <span className="font-medium text-ink">{color}</span>
           {p.category === "phones" && <> · <span className="font-medium text-ink">{storage}</span> · <span className="font-medium text-ink">{ram}</span></>}
-          · <span className="font-medium text-ink">{condition}</span>
         </div>
 
         {/* CTAs */}
