@@ -2,12 +2,18 @@
 // Why: sticky top nav shared across all pages. Mobile-responsive with a hamburger drawer.
 "use client";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { CATEGORIES, SITE } from "@/lib/data";
 import Icon from "@/components/Icon";
+import { useCart } from "@/lib/cart";
 
 export default function Header() {
   const [open, setOpen] = useState(false);
+  const [count, setCount] = useState(0);
+  const items = useCart((s) => s.items);
+  useEffect(() => {
+    setCount(items.reduce((n, i) => n + i.qty, 0));
+  }, [items]);
   const nav = [
     { href: "/shop", label: "শপ" },
     { href: "/category/phones", label: "ফোন" },
@@ -50,8 +56,11 @@ export default function Header() {
         {/* Desktop actions */}
         <nav className="hidden items-center gap-1 md:flex">
           <Link href="/track" className="btn-ghost text-sm">ট্র্যাক</Link>
-          <Link href="/cart" className="btn-primary py-2 text-sm">
+          <Link href="/cart" className="btn-primary relative py-2 text-sm">
             <Icon name="ShoppingCart" size={16} /> কার্ট
+            {count > 0 && (
+              <span className="absolute -right-1.5 -top-1.5 grid h-5 min-w-5 place-items-center rounded-full bg-red-500 px-1 text-[11px] font-bold text-white">{count}</span>
+            )}
           </Link>
         </nav>
 
@@ -82,7 +91,9 @@ export default function Header() {
                 <Link key={n.href} href={n.href} onClick={() => setOpen(false)} className="rounded-lg bg-gray-50 px-3 py-2 text-sm font-medium">{n.label}</Link>
               ))}
               <Link href="/track" onClick={() => setOpen(false)} className="rounded-lg bg-gray-50 px-3 py-2 text-sm font-medium">অর্ডার ট্র্যাক</Link>
-              <Link href="/cart" onClick={() => setOpen(false)} className="rounded-lg bg-brand px-3 py-2 text-sm font-semibold text-white">কার্ট</Link>
+              <Link href="/cart" onClick={() => setOpen(false)} className="relative rounded-lg bg-brand px-3 py-2 text-sm font-semibold text-white">
+                কার্ট{count > 0 && <span className="ml-1 inline-grid h-5 min-w-5 place-items-center rounded-full bg-red-500 px-1 text-[11px] font-bold text-white">{count}</span>}
+              </Link>
             </nav>
           </div>
         </div>

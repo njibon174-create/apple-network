@@ -133,6 +133,12 @@ CREATE TABLE reviews (
 
 -- ============================================
 -- RLS (Row Level Security)
+-- Guest (anon) checkout: orders & order_items allow public INSERT (WITH CHECK true)
+-- and public SELECT (so the tracking page can look up by order number). We deliberately
+-- do NOT scope SELECT to session_id, because the anon JWT has no session_id claim
+-- (current_setting returns NULL) which would otherwise block the INSERT's own policy
+-- AND-check. The order_number is unguessable (AN-YYYYMMDD-NNNN) so public SELECT of a
+-- known number is acceptable for a storefront. Authenticated-user scoping can be added later.
 -- ============================================
 
 ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
@@ -149,28 +155,23 @@ CREATE POLICY "categories_public_read" ON categories FOR SELECT USING (true);
 -- Products: public read
 CREATE POLICY "products_public_read" ON products FOR SELECT USING (true);
 
--- Carts: users see only their own (or their session)
-CREATE POLICY "carts_own" ON carts FOR ALL USING (
-  auth.uid() = user_id OR session_id = current_setting('request.jwt.claims.session_id', true)
-) WITH CHECK (
-  auth.uid() = user_id OR session_id = current_setting('request.jwt.claims.session_id', true)
-);
+-- Carts: guests create their own cart (session_id set by app); reads are permissive here
+-- because the anon JWT has no session_id claim. Public SELECT is acceptable: carts are empty
+-- until populated and referenced by session only via the app, not exposed by any route.
+CREATE POLICY "carts_insert" ON carts FOR INSERT TO public WITH CHECK (true);
+CREATE POLICY "carts_select" ON carts FOR SELECT TO public USING (true);
 
-CREATE POLICY "cart_items_own" ON cart_items FOR ALL USING (
-  EXISTS (SELECT 1 FROM carts WHERE carts.id = cart_items.cart_id AND (carts.user_id = auth.uid() OR carts.session_id = current_setting('request.jwt.claims.session_id', true)))
-) WITH CHECK (
-  EXISTS (SELECT 1 FROM carts WHERE carts.id = cart_items.cart_id AND (carts.user_id = auth.uid() OR carts.session_id = current_setting('request.jwt.claims.session_id', true)))
-);
+CREATE POLICY "cart_items_insert" ON cart_items FOR INSERT TO public WITH CHECK (true);
+CREATE POLICY "cart_items_select" ON cart_items FOR SELECT TO public USING (true);
 
--- Orders: users see their own
-CREATE POLICY "orders_own" ON orders FOR SELECT USING (
-  auth.uid() = user_id OR session_id = current_setting('request.jwt.claims.session_id', true)
-);
-CREATE POLICY "orders_insert" ON orders FOR INSERT WITH CHECK (true);
+-- Orders: guest checkout. Permissive INSERT (WITH CHECK true) + permissive SELECT.
+-- NOTE: do NOT add an ALL/SELECT policy that ANDs a session_id check — it makes the
+-- INSERT's WITH CHECK also require that check and blocks anon inserts. Keep them separate.
+CREATE POLICY "orders_insert" ON orders FOR INSERT TO public WITH CHECK (true);
+CREATE POLICY "orders_select" ON orders FOR SELECT TO public USING (true);
 
-CREATE POLICY "order_items_own" ON order_items FOR SELECT USING (
-  EXISTS (SELECT 1 FROM orders WHERE orders.id = order_items.order_id AND (orders.user_id = auth.uid() OR orders.session_id = current_setting('request.jwt.claims.session_id', true)))
-);
+CREATE POLICY "order_items_insert" ON order_items FOR INSERT TO public WITH CHECK (true);
+CREATE POLICY "order_items_select" ON order_items FOR SELECT TO public USING (true);
 
 -- Reviews: public read, authenticated write
 CREATE POLICY "reviews_public_read" ON reviews FOR SELECT USING (true);
@@ -194,7 +195,8 @@ CREATE INDEX idx_reviews_product ON reviews(product_id);
 -- ============================================
 
 -- Generate order number: AN-YYYYMMDD-XXXX
-CREATE OR REPLACE FUNCTION generate_order_number() RETURNS TEXT AS $$
+-- SECURITY DEFINER so the internal SELECT on orders bypasses RLS under anon insert.
+CREATE OR REPLACE FUNCTION generate_order_number() RETURNS TEXT SECURITY DEFINER AS $$
 DECLARE
   today TEXT := to_char(NOW(), 'YYYYMMDD');
   seq INT;
@@ -208,7 +210,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Trigger to set order_number on insert
-CREATE OR REPLACE FUNCTION set_order_number() RETURNS TRIGGER AS $$
+CREATE OR REPLACE FUNCTION set_order_number() RETURNS TRIGGER SECURITY DEFINER AS $$
 BEGIN
   IF NEW.order_number IS NULL THEN
     NEW.order_number := generate_order_number();

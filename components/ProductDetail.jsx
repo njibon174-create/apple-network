@@ -8,6 +8,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { taka } from "@/lib/data";
 import Icon from "@/components/Icon";
+import { useCart } from "@/lib/cart";
 
 export default function ProductDetail({ p }) {
   // Build variant option lists from the product (with sensible sample fallbacks).
@@ -29,11 +30,23 @@ export default function ProductDetail({ p }) {
   const [condition, setCondition] = useState(conditions[0]);
   const [activeImg, setActiveImg] = useState(0);
   const [added, setAdded] = useState(false);
+  const add = useCart((s) => s.add);
 
   const off = p.regularPrice ? Math.round((1 - p.price / p.regularPrice) * 100) : 0;
   const gallery = [p.image, p.image, p.image, p.image]; // same asset repeated until per-variant photos exist
 
   const addToCart = () => {
+    add({
+      slug: p.slug,
+      name: p.name,
+      price: p.price,
+      image: p.image,
+      color,
+      storage,
+      ram,
+      condition,
+      qty: 1,
+    });
     setAdded(true);
     setTimeout(() => setAdded(false), 2000);
   };
