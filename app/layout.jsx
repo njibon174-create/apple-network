@@ -3,6 +3,7 @@
 // rendered by SiteChrome, which hides them on /admin and /login.
 import "./globals.css";
 import SiteChrome from "@/components/SiteChrome";
+import SiteFooter from "@/components/SiteFooter";
 
 export const metadata = {
   metadataBase: new URL("https://apple-network.bd"),
@@ -34,6 +35,7 @@ export default function RootLayout({ children }) {
       <body>
         <SiteChrome />
         <main className="min-h-[60vh]">{children}</main>
+        <SiteFooter />
       </body>
     </html>
   );
