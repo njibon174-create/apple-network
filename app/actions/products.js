@@ -24,13 +24,14 @@ export async function upsertProduct(formData) {
   const category_id = formData.get("category_id") || null;
   const price_bdt = parseInt(formData.get("price_bdt"), 10) || 0;
   const regular_price_bdt = parseInt(formData.get("regular_price_bdt"), 10) || 0;
+  const initial_stock = parseInt(formData.get("initial_stock"), 10) || 0;
   const condition = formData.get("condition") || "new_official";
   const official = formData.get("official") === "on" || formData.get("official") === "true";
   const in_stock = formData.get("in_stock") === "on" || formData.get("in_stock") === "true";
   const colors = splitArr(formData.get("colors"));
   const storages = splitArr(formData.get("storages"));
   const rams = splitArr(formData.get("rams"));
-  const image_primary = (formData.get("image_primary") || "").toString().trim() || null;
+  const image_primary = (formData.get("image_primary") || "").toString().trim() || "/images/products/placeholder.png";
   const desc_bn = (formData.get("desc_bn") || "").toString().trim() || null;
   const badge = (formData.get("badge") || "").toString().trim() || null;
   const tags = splitArr(formData.get("tags"));
@@ -75,7 +76,7 @@ export async function upsertProduct(formData) {
     productId = data.id;
   }
 
-  // Ensure a stock_ledger row exists (insert qty 0 if missing).
+  // Ensure a stock_ledger row exists (insert with initial_stock on create).
   const { data: led } = await sb
     .from("stock_ledger")
     .select("product_id")
@@ -84,7 +85,7 @@ export async function upsertProduct(formData) {
   if (!led) {
     const { error: iErr } = await sb.from("stock_ledger").insert({
       product_id: productId,
-      qty: 0,
+      qty: id ? 0 : initial_stock,
       avg_cost_bdt: 0,
       updated_at: new Date().toISOString(),
     });

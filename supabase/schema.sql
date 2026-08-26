@@ -36,7 +36,7 @@ CREATE TABLE products (
   brand_en TEXT,
   desc_bn TEXT NOT NULL,
   desc_en TEXT,
-  image_primary TEXT NOT NULL,   -- main product image URL
+  image_primary TEXT NOT NULL,   -- main product image URL (nullable in practice; defaults to placeholder)
   image_gallery TEXT[],          -- additional images
   price_bdt INT NOT NULL,        -- current price in BDT
   regular_price_bdt INT,         -- crossed-out price
@@ -153,8 +153,9 @@ ALTER TABLE reviews ENABLE ROW LEVEL SECURITY;
 -- Categories: public read
 CREATE POLICY "categories_public_read" ON categories FOR SELECT USING (true);
 
--- Products: public read
+-- Products: public read; owner can write (create/update/delete) for the admin panel.
 CREATE POLICY "products_public_read" ON products FOR SELECT USING (true);
+CREATE POLICY "products_owner_write" ON products FOR ALL TO authenticated USING (is_owner()) WITH CHECK (is_owner());
 
 -- Carts: guests create their own cart (session_id set by app); reads are permissive here
 -- because the anon JWT has no session_id claim. Public SELECT is acceptable: carts are empty
