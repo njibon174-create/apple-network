@@ -6,10 +6,10 @@ import OrderRow from "./OrderRow";
 export const dynamic = "force-dynamic";
 
 const STATUS_LABEL = {
-  new: "নতুন",
+  new: "পেন্ডিং",
   calling: "কল করা হচ্ছে",
   confirmed: "কনফার্মড",
-  preparing: "প্রস্তুত",
+  preparing: "প্যাকিং",
   shipping: "শিপিং",
   delivered: "ডেলিভারড",
   cancelled: "বাতিল",

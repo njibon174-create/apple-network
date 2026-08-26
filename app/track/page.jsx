@@ -131,32 +131,48 @@ function TrackPageInner() {
             </div>
           ) : (
             <div className="space-y-0">
-              {STAGES.map((s, i) => {
-                const done = i <= current;
-                return (
-                  <div key={s.key} className="flex gap-4">
-                    <div className="flex flex-col items-center">
-                      <div
-                        className={`grid h-10 w-10 place-items-center rounded-full ${
-                          done ? "bg-brand text-white" : "bg-gray-100 text-ink-muted"
-                        }`}
-                      >
-                        <Icon name={s.icon} size={18} />
+              {(() => {
+                // Map each status-log entry's to_status -> the note shown at that stage.
+                const logByStatus = {};
+                (order.order_status_log || []).forEach((l) => {
+                  if (l.to_status) logByStatus[l.to_status] = l;
+                });
+                return STAGES.map((s, i) => {
+                  const done = i <= current;
+                  const note = logByStatus[s.key];
+                  return (
+                    <div key={s.key} className="flex gap-4">
+                      <div className="flex flex-col items-center">
+                        <div
+                          className={`grid h-10 w-10 place-items-center rounded-full ${
+                            done ? "bg-brand text-white" : "bg-gray-100 text-ink-muted"
+                          }`}
+                        >
+                          <Icon name={s.icon} size={18} />
+                        </div>
+                        {i < STAGES.length - 1 && (
+                          <div className={`h-10 w-0.5 ${i < current ? "bg-brand" : "bg-gray-200"}`} />
+                        )}
                       </div>
-                      {i < STAGES.length - 1 && (
-                        <div className={`h-10 w-0.5 ${i < current ? "bg-brand" : "bg-gray-200"}`} />
-                      )}
+                      <div className={`pb-6 ${done ? "" : "opacity-50"}`}>
+                        <p className="font-semibold text-ink">{s.label}</p>
+                        <p className="text-sm text-ink-muted">{s.desc}</p>
+                        {note?.note && (
+                          <p className="mt-1 rounded-lg bg-gray-50 px-3 py-2 text-sm text-ink-soft">
+                            📝 {note.note}
+                            <span className="ml-2 text-xs text-ink-muted">
+                              {new Date(note.created_at).toLocaleString("bn-BD")}
+                            </span>
+                          </p>
+                        )}
+                        {i === current && (
+                          <p className="mt-1 text-xs text-brand">আনুমানিক ডেলিভারি: ১–২ দিন</p>
+                        )}
+                      </div>
                     </div>
-                    <div className={`pb-6 ${done ? "" : "opacity-50"}`}>
-                      <p className="font-semibold text-ink">{s.label}</p>
-                      <p className="text-sm text-ink-muted">{s.desc}</p>
-                      {i === current && (
-                        <p className="mt-1 text-xs text-brand">আনুমানিক ডেলিভারি: ১–২ দিন</p>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                });
+              })()}
             </div>
           )}
 
