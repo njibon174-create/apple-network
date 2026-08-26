@@ -1,7 +1,7 @@
 // app/admin/orders/OrderRow.jsx — single order card with lifecycle pipeline (server action)
 "use client";
 import { useState } from "react";
-import { updateOrderStatus, logCall } from "@/app/actions/orders";
+import { updateOrderStatus, logCall, deleteOrder } from "@/app/actions/orders";
 import { taka } from "@/lib/data";
 
 const STEPS = [
@@ -31,6 +31,13 @@ export default function OrderRow({ order, statusLabel }) {
   const [busy, setBusy] = useState(false);
   const [callNote, setCallNote] = useState("");
   const stepIdx = STEPS.findIndex((s) => s.key === order.status);
+
+  async function del() {
+    if (!confirm(`অর্ডার ${order.order_number} মুছে ফেলবেন?`)) return;
+    setBusy(true);
+    await deleteOrder(order.order_number);
+    setBusy(false);
+  }
 
   async function advance() {
     const next = NEXT[order.status];
@@ -115,6 +122,13 @@ export default function OrderRow({ order, statusLabel }) {
             বাতিল
           </button>
         )}
+        <button
+          disabled={busy}
+          onClick={del}
+          className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm text-ink-soft hover:bg-gray-50"
+        >
+          🗑 মুছুন
+        </button>
       </div>
     </div>
   );

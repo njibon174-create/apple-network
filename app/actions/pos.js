@@ -2,6 +2,7 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { upsertCustomerByPhone } from "@/lib/customers";
 
 // items: [{ product_id, qty, unit_price_bdt }]
 // payment: 'cash' | 'card' | 'bkash' | 'nagad' | 'credit' | 'emi'
@@ -12,31 +13,23 @@ export async function createPosSale({ items, payment, customer_name, customer_ph
 
   const total = items.reduce((s, i) => s + i.qty * i.unit_price_bdt, 0);
 
-  // Auto-create / find customer (B1: auto from phone).
-  let customerId = null;
+  // Auto-create / find customer by phone (B1: auto from phone). Links the order to
+  // the CRM profile so every POS sale accumulates against the customer's phone.
   const customerType = payment === "credit" ? "credit" : payment === "emi" ? "emi" : "walk-in";
-  if (customer_phone) {
-    const { data: existing } = await sb.from("customers").select("id").eq("phone", customer_phone).maybeSingle();
-    if (existing) {
-      customerId = existing.id;
-      // Update name/type on the existing customer so CRM stays fresh across visits.
-      await sb.from("customers").update({ name: customer_name || existing.name || "ওয়াক-ইন", type: customerType }).eq("id", existing.id);
-    } else {
-      const { data: created } = await sb
-        .from("customers")
-        .insert({ name: customer_name || "ওয়াক-ইন", phone: customer_phone, type: customerType })
-        .select("id")
-        .single();
-      customerId = created?.id;
-    }
-  }
+  const customerId = await upsertCustomerByPhone({
+    phone: customer_phone,
+    name: customer_name,
+    type: customerType,
+    note: note || null,
+  });
 
   // Create the order (source = pos).
   const { data: order, error: oe } = await sb
     .from("orders")
     .insert({
-      status: payment === "credit" || payment === "emi" ? "confirmed" : "confirmed",
+      status: "confirmed",
       source: "pos",
+      customer_id: customerId,
       subtotal_bdt: total,
       total_bdt: total,
       payment_method: payment,
@@ -46,7 +39,6 @@ export async function createPosSale({ items, payment, customer_name, customer_ph
       shipping_address: note || "",
       shipping_city: "",
       shipping_division: "",
-      customer_id: customerId,
       due_date: due_date || null,
     })
     .select("id, order_number")

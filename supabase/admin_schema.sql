@@ -86,6 +86,10 @@ CREATE UNIQUE INDEX IF NOT EXISTS customers_phone_key ON customers(phone) WHERE 
 
 ALTER TABLE customers ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "customers_owner" ON customers FOR ALL TO authenticated USING (is_owner()) WITH CHECK (is_owner());
+-- Public insert: guest checkout (website) registers the buyer by phone. The phone is
+-- the unique CRM key (partial unique index on non-null phone). Select is owner-only so
+-- customer PII is not exposed to the public; the anon insert above is enough for signup.
+CREATE POLICY "customers_insert" ON customers FOR INSERT TO public WITH CHECK (true);
 
 -- Link orders to customers (POS sets this; online guest orders stay NULL).
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS customer_id UUID REFERENCES customers(id) ON DELETE SET NULL;
