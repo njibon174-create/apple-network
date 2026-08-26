@@ -8,13 +8,17 @@ import { getOrderByNumber } from "@/lib/orders";
 import { taka } from "@/lib/data";
 
 const STAGES = [
-  { key: "confirmed", label: "কনফার্ম করা হয়েছে", icon: "CheckCircle2", desc: "অর্ডার গ্রহণ করা হয়েছে" },
+  { key: "new", label: "অর্ডার গ্রহণ", icon: "ShoppingBag", desc: "অর্ডারটি পাওয়া গেছে" },
+  { key: "calling", label: "যাচাই করা হচ্ছে", icon: "Phone", desc: "আমরা আপনাকে কল করছি" },
+  { key: "confirmed", label: "কনফার্ম করা হয়েছে", icon: "CheckCircle2", desc: "অর্ডার নিশ্চিত করা হয়েছে" },
   { key: "preparing", label: "প্রস্তুতি", icon: "Package", desc: "প্যাক ও চেক করা হচ্ছে" },
   { key: "shipping", label: "পথে", icon: "Truck", desc: "ডেলিভারি পার্টনারের কাছে" },
   { key: "delivered", label: "ডেলিভার করা হয়েছে", icon: "Home", desc: "পৌঁছে গেছে" },
 ];
 
 const STATUS_LABEL = {
+  new: "নতুন অর্ডার",
+  calling: "কল করা হচ্ছে",
   confirmed: "কনফার্ম করা হয়েছে",
   preparing: "প্রস্তুতি চলছে",
   shipping: "পথে আছে",
@@ -23,7 +27,7 @@ const STATUS_LABEL = {
 };
 
 // which timeline stage is "current" for each status
-const STATUS_INDEX = { confirmed: 0, preparing: 1, shipping: 2, delivered: 3 };
+const STATUS_INDEX = { new: 0, calling: 1, confirmed: 2, preparing: 3, shipping: 4, delivered: 5 };
 
 export default function TrackPage() {
   return (
@@ -153,6 +157,28 @@ function TrackPageInner() {
                   </div>
                 );
               })}
+            </div>
+          )}
+
+          {order.order_status_log?.length > 0 && (
+            <div className="mt-6 rounded-lg bg-gray-50 p-4">
+              <p className="mb-2 text-xs font-medium uppercase text-ink-muted">আপডেট হিস্টোরি</p>
+              <ul className="space-y-1.5 text-sm">
+                {order.order_status_log
+                  .slice()
+                  .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+                  .map((l) => (
+                    <li key={l.id} className="flex items-start gap-2 text-ink-soft">
+                      <span className="mt-1.5 h-1.5 w-1.5 flex-none rounded-full bg-brand" />
+                      <span>
+                        {l.note || l.to_status}
+                        <span className="ml-2 text-xs text-ink-muted">
+                          {new Date(l.created_at).toLocaleString("bn-BD")}
+                        </span>
+                      </span>
+                    </li>
+                  ))}
+              </ul>
             </div>
           )}
 
