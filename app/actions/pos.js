@@ -14,14 +14,17 @@ export async function createPosSale({ items, payment, customer_name, customer_ph
 
   // Auto-create / find customer (B1: auto from phone).
   let customerId = null;
+  const customerType = payment === "credit" ? "credit" : payment === "emi" ? "emi" : "walk-in";
   if (customer_phone) {
     const { data: existing } = await sb.from("customers").select("id").eq("phone", customer_phone).maybeSingle();
     if (existing) {
       customerId = existing.id;
+      // Update name/type on the existing customer so CRM stays fresh across visits.
+      await sb.from("customers").update({ name: customer_name || existing.name || "ওয়াক-ইন", type: customerType }).eq("id", existing.id);
     } else {
       const { data: created } = await sb
         .from("customers")
-        .insert({ name: customer_name || "ওয়াক-ইন", phone: customer_phone, type: payment === "credit" ? "credit" : "walk-in" })
+        .insert({ name: customer_name || "ওয়াক-ইন", phone: customer_phone, type: customerType })
         .select("id")
         .single();
       customerId = created?.id;

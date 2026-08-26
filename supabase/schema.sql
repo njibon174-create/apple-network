@@ -6,7 +6,7 @@
 -- ENUMS & TYPES
 -- ============================================
 CREATE TYPE product_condition AS ENUM ('new_official', 'new_unofficial', 'used_excellent', 'used_good');
-CREATE TYPE order_status AS ENUM ('confirmed', 'preparing', 'shipping', 'delivered', 'cancelled');
+CREATE TYPE order_status AS ENUM ('new','calling','confirmed', 'preparing', 'shipping', 'delivered', 'cancelled');
 CREATE TYPE payment_method AS ENUM ('cod', 'bkash', 'nagad', 'card', 'emi');
 
 -- ============================================

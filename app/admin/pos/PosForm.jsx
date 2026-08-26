@@ -147,6 +147,14 @@ export default function PosForm({ products }) {
           </div>
         )}
 
+        {/* Name & Phone always visible — links every sale to a customer (CRM tracking). */}
+        {payment !== "credit" && payment !== "emi" && (
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            <input value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="কাস্টমার নাম (ঐচ্ছিক)" className="rounded-lg border border-gray-200 px-3 py-2 text-sm" />
+            <input value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder="ফোন (ঐচ্ছিক)" className="rounded-lg border border-gray-200 px-3 py-2 text-sm" />
+          </div>
+        )}
+
         {error && <p className="mt-2 rounded-lg bg-red-50 p-2 text-sm text-red-600">{error}</p>}
         {done && <p className="mt-2 rounded-lg bg-green-50 p-2 text-sm text-green-700">সেল সফল: {done}</p>}
 

@@ -49,7 +49,7 @@ CREATE OR REPLACE FUNCTION is_owner() RETURNS BOOLEAN AS $$
 $$ LANGUAGE sql STABLE SECURITY DEFINER;
 
 -- ============================================
--- CUSTOMER MESSAGES / INQUIRIES (from the site)
+-- CUSTOMER MESSAGES / INQUIRIES (site contact-form inbox)
 -- ============================================
 CREATE TABLE IF NOT EXISTS inquiries (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -64,15 +64,84 @@ CREATE TABLE IF NOT EXISTS inquiries (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
-
 ALTER TABLE inquiries ENABLE ROW LEVEL SECURITY;
 -- Public can insert (contact form); only owner can read/update.
 CREATE POLICY "inquiries_insert" ON inquiries FOR INSERT TO public WITH CHECK (true);
 CREATE POLICY "inquiries_owner" ON inquiries FOR ALL TO authenticated USING (is_owner()) WITH CHECK (is_owner());
 
 -- ============================================
--- INVENTORY / PURCHASES / STOCK
+-- CUSTOMERS / CRM (auto-created from POS & online orders)
 -- ============================================
+CREATE TABLE IF NOT EXISTS customers (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL DEFAULT '—',
+  phone TEXT,
+  email TEXT,
+  type TEXT NOT NULL DEFAULT 'walk-in',        -- walk-in | credit | emi
+  note TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS customers_phone_key ON customers(phone) WHERE phone IS NOT NULL AND phone <> '';
+
+ALTER TABLE customers ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "customers_owner" ON customers FOR ALL TO authenticated USING (is_owner()) WITH CHECK (is_owner());
+
+-- Link orders to customers (POS sets this; online guest orders stay NULL).
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS customer_id UUID REFERENCES customers(id) ON DELETE SET NULL;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'online';
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS due_date TIMESTAMPTZ;
+CREATE INDEX IF NOT EXISTS idx_orders_customer ON orders(customer_id);
+CREATE INDEX IF NOT EXISTS idx_orders_source ON orders(source);
+
+-- Owner can manage all orders (POS admin updates). Public guest INSERT stays via
+-- the permissive orders_insert policy already in schema.sql — this ADDs owner write
+-- without touching the public insert path (separate policies, never AND-ed on INSERT).
+CREATE POLICY IF NOT EXISTS "orders_owner" ON orders FOR ALL TO authenticated USING (is_owner()) WITH CHECK (is_owner());
+CREATE POLICY IF NOT EXISTS "order_items_owner" ON order_items FOR ALL TO authenticated USING (is_owner()) WITH CHECK (is_owner());
+
+-- Status audit log: every lifecycle change is recorded (new->calling->confirmed->...).
+CREATE TABLE IF NOT EXISTS order_status_log (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  order_id UUID REFERENCES orders(id) ON DELETE CASCADE,
+  from_status TEXT,
+  to_status TEXT,
+  note TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE order_status_log ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "order_status_log_owner" ON order_status_log FOR ALL TO authenticated USING (is_owner()) WITH CHECK (is_owner());
+
+-- Credit receivables (বাকি) + EMI schedule.
+CREATE TABLE IF NOT EXISTS credit_sales (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  order_id UUID REFERENCES orders(id) ON DELETE SET NULL,
+  customer_id UUID REFERENCES customers(id) ON DELETE SET NULL,
+  total_due INT NOT NULL,
+  amount_paid INT NOT NULL DEFAULT 0,
+  due_date TIMESTAMPTZ,
+  status TEXT NOT NULL DEFAULT 'open',         -- open | partial | paid
+  note TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE credit_sales ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "credit_owner" ON credit_sales FOR ALL TO authenticated USING (is_owner()) WITH CHECK (is_owner());
+
+CREATE TABLE IF NOT EXISTS emis (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  order_id UUID REFERENCES orders(id) ON DELETE SET NULL,
+  customer_id UUID REFERENCES customers(id) ON DELETE SET NULL,
+  total_bdt INT NOT NULL,
+  months INT NOT NULL,
+  monthly_bdt INT NOT NULL,
+  paid_months INT NOT NULL DEFAULT 0,
+  start_date DATE,
+  status TEXT NOT NULL DEFAULT 'active',       -- active | completed | defaulted
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE emis ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "emis_owner" ON emis FOR ALL TO authenticated USING (is_owner()) WITH CHECK (is_owner());
 CREATE TABLE IF NOT EXISTS purchases (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   product_id UUID REFERENCES products(id) ON DELETE SET NULL,
