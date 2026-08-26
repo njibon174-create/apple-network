@@ -1,15 +1,11 @@
 // middleware.js
-// Why: cheap first gate for /admin/* — redirect to /login only when there is no
-// session cookie at all. The AUTHORITATIVE auth + owner-role check happens in
-// app/admin/layout.jsx (Node runtime, reliable). Keeping middleware minimal here
-// avoids Edge-runtime getUser()/cookie-decoding flakiness.
-//
-// IMPORTANT: we intentionally do NOT bounce /login -> /admin here. The login page
-// redirects to /admin itself after a successful sign-in. Bouncing on mere cookie
-// *presence* caused ERR_TOO_MANY_REDIRECTS when a stale/invalid session cookie
-// existed (middleware sent you to /admin, the layout's getUser() failed, it sent
-// you back to /login, repeat).
+// Why: refreshes the Supabase session on every request and writes the rotated
+// cookie back to the response. This is REQUIRED so that server actions (which
+// cannot set cookies themselves) keep a valid session — without it, clicking an
+// action drops auth, the layout's getUser() returns null, and you get bounced to
+// /login (blank page after Cancel/Packing). Also gates /admin behind a session.
 import { NextResponse, NextRequest } from "next/server";
+import { createServerClient } from "@supabase/ssr";
 
 export const config = {
   matcher: ["/admin/:path*", "/login"],
@@ -18,13 +14,42 @@ export const config = {
 const COOKIE_RE = /sb-[a-z0-9]+-auth-token/;
 
 export async function middleware(request) {
-  const { pathname } = request.nextUrl;
+  let response = NextResponse.next({ request });
+
+  const url =
+    process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_SUPABASE_URL;
+  const key =
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_SUPABASE_ANON_KEY;
+
+  const supabase = createServerClient(url, key, {
+    cookies: {
+      getAll() {
+        return request.cookies.getAll();
+      },
+      setAll(cookiesToSet) {
+        cookiesToSet.forEach(({ name, value, options }) =>
+          response.cookies.set(name, value, options)
+        );
+      },
+    },
+  });
+
+  // Refresh the session (writes rotated cookie into `response`).
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const pathname = request.nextUrl.pathname;
   const hasSession = request.cookies.getAll().some((c) => COOKIE_RE.test(c.name));
 
-  // Gate: no session cookie -> must log in.
-  if (pathname.startsWith("/admin") && !hasSession) {
+  // Gate admin: no session -> login.
+  if (pathname.startsWith("/admin") && !user) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
-  // /login is always reachable (the page redirects to /admin after a real sign-in).
-  return NextResponse.next();
+  // Logged-in user hitting /login -> send to admin.
+  if (pathname === "/login" && user) {
+    return NextResponse.redirect(new URL("/admin", request.url));
+  }
+
+  return response;
 }

@@ -108,5 +108,3 @@ export async function deleteOrder(orderNumber) {
     return { error: "সার্ভার এরর — পেজ রিফ্রেশ করে আবার চেষ্টা করুন" };
   }
 }
-
-export { PIPELINE };
