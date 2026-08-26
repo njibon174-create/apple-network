@@ -2,7 +2,7 @@
 // Why: central lucide-react icon helper so pages/data can reference icons by name.
 // Keeps icon imports in one place and lets data.js store plain string names.
 import {
-  Smartphone, Headphones, Laptop, Watch, Tv, Cpu,
+  Wallet, Receipt, Undo2, Trash2, Smartphone, Headphones, Laptop, Watch, Tv, Cpu,
   Search, ShoppingCart, Menu, Truck, CreditCard, ShieldCheck,
   RefreshCw, BadgeCheck, Star, Phone, Mail, MapPin, Clock,
   MessageCircle, Package, Home, CheckCircle2, Zap, Plus, Minus,
@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 
 const MAP = {
-  Smartphone, Headphones, Laptop, Watch, Tv, Cpu,
+  Wallet, Receipt, Undo2, Trash2, Smartphone, Headphones, Laptop, Watch, Tv, Cpu,
   Search, ShoppingCart, Menu, Truck, CreditCard, ShieldCheck,
   RefreshCw, BadgeCheck, Star, Phone, Mail, MapPin, Clock,
   MessageCircle, Package, Home, CheckCircle2, Zap, Plus, Minus,

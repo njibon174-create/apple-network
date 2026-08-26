@@ -41,6 +41,7 @@ CREATE TABLE products (
   price_bdt INT NOT NULL,        -- current price in BDT
   regular_price_bdt INT,         -- crossed-out price
   condition product_condition NOT NULL DEFAULT 'new_official',
+  official BOOLEAN NOT NULL DEFAULT true,  -- official (TRUE) vs unofficial (FALSE) supplier
   colors TEXT[],                 -- available colors
   storages TEXT[],               -- available storages
   rams TEXT[],                   -- available RAMs

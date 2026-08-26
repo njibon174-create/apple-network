@@ -23,6 +23,12 @@ export default async function AdminLayout({ children }) {
     { href: "/admin", label: "ড্যাশবোর্ড", icon: "LayoutDashboard" },
     { href: "/admin/orders", label: "অর্ডার", icon: "ShoppingBag" },
     { href: "/admin/messages", label: "মেসেজ", icon: "MessageSquare" },
+    { href: "/admin/products", label: "প্রোডাক্ট", icon: "Package" },
+    { href: "/admin/purchases", label: "নতুন স্টক", icon: "Truck" },
+    { href: "/admin/cash", label: "ক্যাশ বুক", icon: "Wallet" },
+    { href: "/admin/expenses", label: "খরচ", icon: "Receipt" },
+    { href: "/admin/returns", label: "রিটার্ন", icon: "Undo2" },
+    { href: "/admin/reports", label: "প্রফিট-লস", icon: "BarChart3" },
   ];
 
   return (

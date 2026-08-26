@@ -88,6 +88,7 @@ CREATE TABLE IF NOT EXISTS purchases (
 CREATE TABLE IF NOT EXISTS stock_ledger (
   product_id UUID PRIMARY KEY REFERENCES products(id) ON DELETE CASCADE,
   qty INT NOT NULL DEFAULT 0,
+  avg_cost_bdt INT NOT NULL DEFAULT 0,  -- weighted-average cost (for COGS / P&L)
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
