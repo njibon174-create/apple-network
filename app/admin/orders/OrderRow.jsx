@@ -2,7 +2,8 @@
 // per-step note capture. Each advance writes a note to order_status_log so the
 // customer can read the timeline on /track.
 "use client";
-import { useState } from "react";
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { updateOrderStatus, deleteOrder } from "@/app/actions/orders";
 import { taka } from "@/lib/data";
 
@@ -23,31 +24,36 @@ const NEXT = {
 };
 
 export default function OrderRow({ order, statusLabel }) {
-  const [busy, setBusy] = useState(false);
+  const router = useRouter();
+  const [busy, startTransition] = useTransition();
   const [note, setNote] = useState(""); // note attached to the NEXT step
+  const [err, setErr] = useState(null);
   const stepIdx = STEP_INDEX[order.status] ?? 0;
   const next = NEXT[order.status];
   const nextBtn = next ? STEPS[STEP_INDEX[next]].btn : null;
   const isPending = order.status === "new";
   const isClosed = order.status === "cancelled" || order.status === "delivered";
 
-  async function advance() {
+  function run(fn) {
+    setErr(null);
+    startTransition(async () => {
+      const res = await fn();
+      if (res?.error) setErr(res.error);
+      router.refresh(); // reflect the new status from the server
+    });
+  }
+
+  function advance() {
     if (!next) return;
-    setBusy(true);
-    await updateOrderStatus(order.order_number, next, note.trim() || null);
+    run(() => updateOrderStatus(order.order_number, next, note.trim() || null));
     setNote("");
-    setBusy(false);
   }
-  async function cancel() {
-    setBusy(true);
-    await updateOrderStatus(order.order_number, "cancelled", note.trim() || "মালিক বাতিল করেছেন");
-    setBusy(false);
+  function cancel() {
+    run(() => updateOrderStatus(order.order_number, "cancelled", note.trim() || "মালিক বাতিল করেছেন"));
   }
-  async function del() {
+  function del() {
     if (!confirm(`অর্ডার ${order.order_number} মুছে ফেলবেন?`)) return;
-    setBusy(true);
-    await deleteOrder(order.order_number);
-    setBusy(false);
+    run(() => deleteOrder(order.order_number));
   }
 
   return (
@@ -116,6 +122,9 @@ export default function OrderRow({ order, statusLabel }) {
             🗑 মুছুন
           </button>
         </div>
+        {err && (
+          <p className="rounded-lg bg-red-50 px-3 py-1.5 text-xs text-red-600">{err}</p>
+        )}
       </div>
     </div>
   );

@@ -39,7 +39,7 @@ export async function updateOrderStatus(orderNumber, status, note) {
     from_status: cur.status,
     to_status: status,
     note: note || null,
-  });
+  }).then(() => {}).catch((e) => console.error("status_log insert skipped:", e));
 
   revalidatePath("/admin/orders");
   revalidatePath("/admin");
