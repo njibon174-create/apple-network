@@ -107,6 +107,20 @@ export async function upsertProduct(formData) {
     }
   } else {
     payload.slug = slugify(name);
+    // Handle duplicate slug by appending suffix.
+    let candidate = payload.slug;
+    let suffix = 1;
+    while (true) {
+      const { data: existing } = await sb
+        .from("products")
+        .select("id")
+        .eq("slug", candidate)
+        .maybeSingle();
+      if (!existing) break;
+      suffix += 1;
+      candidate = `${payload.slug}-${suffix}`;
+    }
+    payload.slug = candidate;
     const { data, error } = await sb
       .from("products")
       .insert(payload)
@@ -114,7 +128,7 @@ export async function upsertProduct(formData) {
       .single();
     if (error) {
       console.error("upsertProduct insert failed", error);
-      return { error: "তৈরি ব্যর্থ (slug সমস্যা হতে পারে)" };
+      return { error: `তৈরি ব্যর্থ: ${error.message || "slug সমস্যা হতে পারে"}` };
     }
     productId = data.id;
   }

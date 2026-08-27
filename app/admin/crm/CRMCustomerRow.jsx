@@ -4,6 +4,7 @@ import Link from "next/link";
 import { updateCustomerProfile, changeCustomerType } from "@/app/actions/crm";
 import { taka } from "@/lib/data";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 const TYPE_COLOR = {
   "walk-in": "bg-gray-100 text-ink-muted",
@@ -25,6 +26,7 @@ const TYPE_OPTIONS = [
 ];
 
 export default function CRMCustomerRow({ c }) {
+  const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState(null);
   const [editingType, setEditingType] = useState(false);
@@ -32,8 +34,7 @@ export default function CRMCustomerRow({ c }) {
   const [name, setName] = useState(c.name);
   const [note, setNote] = useState(c.note || "");
 
-  const spent = 0;
-  const creditBalance = 0;
+  const spent = c.total_spent || 0;
   const overdueCount = 0;
   const isLate = false;
 
@@ -48,6 +49,7 @@ export default function CRMCustomerRow({ c }) {
     if (res?.error) setMsg(res.error);
     else {
       setMsg("প্রোফাইল আপডেট হয়েছে");
+      router.refresh();
       setTimeout(() => setMsg(null), 2500);
     }
   }
@@ -61,6 +63,7 @@ export default function CRMCustomerRow({ c }) {
     if (res?.error) setMsg(res.error);
     else {
       setMsg(`টাইপ পরিবর্তন: ${TYPE_LABEL[nextType] || nextType}`);
+      router.refresh();
       setTimeout(() => setMsg(null), 2500);
     }
   }

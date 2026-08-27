@@ -20,7 +20,7 @@ export default async function CRMListPage({
   const type = (searchParams.type || "").trim();
 
   // Lightweight customer list to avoid PostgREST subquery parsing issues.
-  const baseColumns = "id, name, phone, email, type, note, created_at";
+  const baseColumns = "id, name, phone, email, type, note, created_at, total_spent";
 
   let query = sb
     .from("customers")

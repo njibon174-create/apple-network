@@ -28,80 +28,149 @@ async function logActivity(sb, customerId, kind, summary, detail = null) {
 
 export async function getCustomer(id) {
   const sb = await createClient();
-  const { data: customer } = await sb
-    .from("customers")
-    .select("id, name, phone, email, type, note, created_at, updated_at")
-    .eq("id", id)
-    .maybeSingle();
-  if (!customer) return null;
-
-  const { data: phones } = await sb
-    .from("customer_phones")
-    .select("id, phone, label, is_primary, created_at")
-    .eq("customer_id", id)
-    .order("is_primary", { ascending: false })
-    .order("created_at", { ascending: false });
-
-  const { data: addresses } = await sb
-    .from("customer_addresses")
-    .select("id, label, full_address, area, city, division, zip, phone, is_default, created_at, updated_at")
-    .eq("customer_id", id)
-    .order("is_default", { ascending: false })
-    .order("created_at", { ascending: false });
-
-  const { data: typeLog } = await sb
-    .from("customer_type_log")
-    .select("id, from_type, to_type, reason, created_at")
-    .eq("customer_id", id)
-    .order("created_at", { ascending: false });
-
-  const { data: activities } = await sb
-    .from("customer_activity_log")
-    .select("id, kind, summary, detail, created_at")
-    .eq("customer_id", id)
-    .order("created_at", { ascending: false })
-    .limit(500);
-
-  // enrich activity detail JSON safely
-  const enriched = (activities || []).map((a) => {
-    let detail = a.detail;
-    if (typeof detail === "string") {
-      try {
-        detail = JSON.parse(detail);
-      } catch {
-        detail = null;
-      }
-    }
-    return { ...a, detail };
-  });
-
-  // Fetch credit summary.
-  const { data: creditSummary } = await sb
-    .from("credit_sales")
-    .select("id, total_due, amount_paid, due_date, status")
-    .eq("customer_id", id);
-  const creditSalesList = creditSummary || [];
-  const totalCreditDue = creditSalesList.reduce((s, c) => s + c.total_due, 0);
-  const totalCreditPaid = creditSalesList.reduce((s, c) => s + c.amount_paid, 0);
-
-  const { data: emiList } = await sb
-    .from("emis")
-    .select("id, total_bdt, months, monthly_bdt, paid_months, status")
-    .eq("customer_id", id);
-  const emiRemaining = (emiList || []).reduce((s, e) => s + e.total_bdt - e.monthly_bdt * e.paid_months, 0);
-
-  return {
-    ...customer,
-    phones: phones || [],
-    addresses: addresses || [],
-    typeLog: typeLog || [],
-    activities: enriched,
-    credit_sales: creditSalesList,
-    total_credit_due: totalCreditDue,
-    total_credit_paid: totalCreditPaid,
-    emi_remaining: emiRemaining,
-    credit_outstanding: totalCreditDue - totalCreditPaid + emiRemaining,
+  const result = {
+    id: null,
+    name: null,
+    phone: null,
+    email: null,
+    type: "walk-in",
+    note: null,
+    created_at: null,
+    updated_at: null,
+    phones: [],
+    addresses: [],
+    typeLog: [],
+    activities: [],
+    credit_sales: [],
+    orders: [],
+    total_credit_due: 0,
+    total_credit_paid: 0,
+    emi_remaining: 0,
+    credit_outstanding: 0,
+    total_spent: 0,
   };
+
+  // Base customer — select only columns that exist in all schema versions.
+  try {
+    const { data: customer } = await sb
+      .from("customers")
+      .select("id, name, phone, email, type, note, created_at, updated_at")
+      .eq("id", id)
+      .maybeSingle();
+    if (!customer) return null;
+    Object.assign(result, customer);
+  } catch (e) {
+    console.error("getCustomer: base fetch failed", e);
+    return null;
+  }
+
+  // Phones — table may not exist yet.
+  try {
+    const { data: phones } = await sb
+      .from("customer_phones")
+      .select("id, phone, label, is_primary, created_at")
+      .eq("customer_id", id)
+      .order("is_primary", { ascending: false })
+      .order("created_at", { ascending: false });
+    result.phones = phones || [];
+  } catch (e) {
+    console.error("getCustomer: phones fetch skipped", e);
+    result.phones = [];
+  }
+
+  // Addresses.
+  try {
+    const { data: addresses } = await sb
+      .from("customer_addresses")
+      .select("id, label, full_address, area, city, division, zip, phone, is_default, created_at, updated_at")
+      .eq("customer_id", id)
+      .order("is_default", { ascending: false })
+      .order("created_at", { ascending: false });
+    result.addresses = addresses || [];
+  } catch (e) {
+    console.error("getCustomer: addresses fetch skipped", e);
+    result.addresses = [];
+  }
+
+  // Type log.
+  try {
+    const { data: typeLog } = await sb
+      .from("customer_type_log")
+      .select("id, from_type, to_type, reason, created_at")
+      .eq("customer_id", id)
+      .order("created_at", { ascending: false });
+    result.typeLog = typeLog || [];
+  } catch (e) {
+    console.error("getCustomer: typeLog fetch skipped", e);
+    result.typeLog = [];
+  }
+
+  // Activity log.
+  try {
+    const { data: activities } = await sb
+      .from("customer_activity_log")
+      .select("id, kind, summary, detail, created_at")
+      .eq("customer_id", id)
+      .order("created_at", { ascending: false })
+      .limit(500);
+    const enriched = (activities || []).map((a) => {
+      let detail = a.detail;
+      if (typeof detail === "string") {
+        try { detail = JSON.parse(detail); } catch { detail = null; }
+      }
+      return { ...a, detail };
+    });
+    result.activities = enriched;
+  } catch (e) {
+    console.error("getCustomer: activities fetch skipped", e);
+    result.activities = [];
+  }
+
+  // Credit summary.
+  try {
+    const { data: creditSummary } = await sb
+      .from("credit_sales")
+      .select("id, total_due, amount_paid, due_date, status")
+      .eq("customer_id", id);
+    const creditSalesList = creditSummary || [];
+    result.credit_sales = creditSalesList;
+    result.total_credit_due = creditSalesList.reduce((s, c) => s + (c.total_due || 0), 0);
+    result.total_credit_paid = creditSalesList.reduce((s, c) => s + (c.amount_paid || 0), 0);
+  } catch (e) {
+    console.error("getCustomer: credit fetch skipped", e);
+    result.credit_sales = [];
+  }
+
+  // EMI summary.
+  try {
+    const { data: emiList } = await sb
+      .from("emis")
+      .select("id, total_bdt, months, monthly_bdt, paid_months, status")
+      .eq("customer_id", id);
+    result.emi_remaining = (emiList || []).reduce((s, e) => s + (e.total_bdt || 0) - (e.monthly_bdt || 0) * (e.paid_months || 0), 0);
+  } catch (e) {
+    console.error("getCustomer: emi fetch skipped", e);
+    result.emi_remaining = 0;
+  }
+
+  // Orders for this customer (for total_spent + order count).
+  try {
+    const { data: orders } = await sb
+      .from("orders")
+      .select("id, order_number, total_bdt, status, created_at")
+      .eq("customer_id", id)
+      .order("created_at", { ascending: false })
+      .limit(100);
+    result.orders = orders || [];
+    result.total_spent = (orders || []).reduce((s, o) => s + (o.total_bdt || 0), 0);
+  } catch (e) {
+    console.error("getCustomer: orders fetch skipped", e);
+    result.orders = [];
+  }
+
+  result.credit_outstanding = result.total_credit_due - result.total_credit_paid + result.emi_remaining;
+
+  return result;
 }
 
 export async function updateCustomerProfile(id, { name, email, note, type }) {
