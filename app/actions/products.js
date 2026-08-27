@@ -6,12 +6,17 @@ import { createClient } from "@/lib/supabase/server";
 const splitArr = (v) =>
   v ? v.toString().split(",").map((s) => s.trim()).filter(Boolean) : [];
 
-const slugify = (s) =>
-  s
+const slugify = (s) => {
+  if (!s) return "";
+  const slug = s
     .toLowerCase()
     .trim()
-    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/\s+/g, "-")
+    .replace(/[^\p{L}\p{N}-]+/gu, "")
+    .replace(/-+/g, "-")
     .replace(/^-+|-+$/g, "");
+  return slug || `item-${Date.now()}`;
+};
 
 export async function upsertProduct(formData) {
   const sb = await createClient();
