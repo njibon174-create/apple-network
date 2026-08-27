@@ -32,10 +32,10 @@ export default function CRMCustomerRow({ c }) {
   const [name, setName] = useState(c.name);
   const [note, setNote] = useState(c.note || "");
 
-  const spent = c.total_spent || 0;
-  const creditBalance = c.credit_balance || 0;
-  const overdueCount = c.overdue_count || 0;
-  const isLate = overdueCount > 0 || creditBalance > 0;
+  const spent = 0;
+  const creditBalance = 0;
+  const overdueCount = 0;
+  const isLate = false;
 
   async function saveProfile() {
     setBusy(true);

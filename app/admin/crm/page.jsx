@@ -19,39 +19,14 @@ export default async function CRMListPage({
   const q = (searchParams.q || "").trim();
   const type = (searchParams.type || "").trim();
 
-  // Build the customer query. We want a lightweight summary row so the list
-  // page loads fast even with thousands of customers.
+  // Lightweight customer list to avoid PostgREST subquery parsing issues.
+  const baseColumns = "id, name, phone, email, type, note, created_at";
+
   let query = sb
     .from("customers")
-    .select(`
-      id, name, phone, email, type, note, created_at,
-      (
-        SELECT COUNT(*)::int FROM customer_phones WHERE customer_phones.customer_id = customers.id
-      ) AS phone_count,
-      (
-        SELECT COUNT(*)::int FROM customer_addresses WHERE customer_addresses.customer_id = customers.id
-      ) AS address_count,
-      (
-        SELECT COUNT(*)::int FROM orders WHERE orders.customer_id = customers.id
-      ) AS order_count,
-      (
-        SELECT COALESCE(SUM(total_bdt), 0)::int FROM orders WHERE orders.customer_id = customers.id
-      ) AS total_spent,
-      (
-        SELECT COALESCE(SUM(total_due - amount_paid), 0)::int
-        FROM credit_sales WHERE credit_sales.customer_id = customers.id AND credit_sales.status <> 'paid'
-      ) AS credit_balance,
-      (
-        SELECT COUNT(*)::int
-        FROM credit_sales
-        WHERE credit_sales.customer_id = customers.id
-          AND credit_sales.status <> 'paid'
-          AND credit_sales.due_date < NOW()
-      ) AS overdue_count
-    `);
+    .select(baseColumns);
 
   if (q) {
-    // search by phone or name (case-insensitive, Bengali-aware)
     query = query.or(`phone.ilike.%${q}`, `name.ilike.%${q}`);
   }
   if (type) {
@@ -63,7 +38,7 @@ export default async function CRMListPage({
   let customers = [];
   let queryError = null;
   try {
-    const res = await query.select("id, name, phone, email, type, note, created_at").order("created_at", { ascending: false });
+    const res = await query;
     customers = res.data || [];
     queryError = res.error || null;
   } catch (e) {
@@ -128,18 +103,6 @@ export default async function CRMListPage({
           ক্রেডিট/ইমি:{" "}
           <strong className="text-ink">
             {rows.filter((r) => r.type === "credit" || r.type === "emi").length}
-          </strong>
-        </span>
-        <span className="rounded-lg bg-white px-3 py-1.5 border border-gray-100 text-ink-muted">
-          বাকি রয়েছে:{" "}
-          <strong className="text-ink">
-            {rows.filter((r) => (r.credit_balance || 0) > 0).length}
-          </strong>
-        </span>
-        <span className="rounded-lg bg-white px-3 py-1.5 border border-gray-100 text-ink-muted">
-          ওভারডু:{" "}
-          <strong className="text-red-600">
-            {rows.reduce((s, r) => s + (r.overdue_count || 0), 0)}
           </strong>
         </span>
       </div>
