@@ -63,7 +63,7 @@ export default async function CRMListPage({
   let customers = [];
   let queryError = null;
   try {
-    const res = await query;
+    const res = await query.select("id, name, phone, email, type, note, created_at").order("created_at", { ascending: false });
     customers = res.data || [];
     queryError = res.error || null;
   } catch (e) {
