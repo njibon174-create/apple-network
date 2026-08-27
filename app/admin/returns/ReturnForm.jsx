@@ -1,13 +1,24 @@
+// app/admin/returns/ReturnForm.jsx — enhanced form with condition, qty, product_id.
 "use client";
-
 import { useState } from "react";
-import { addReturn } from "@/app/actions/returns";
+import { createReturn } from "@/app/actions/returns";
 import Icon from "@/components/Icon";
+
+const CONDITIONS = [
+  { value: "", label: "ঐচ্ছিক" },
+  { value: "new", label: "নতুন" },
+  { value: "like_new", label: "অত্যন্ত ভালো" },
+  { value: "good", label: "ভালো" },
+  { value: "damaged", label: "ক্ষতিগ্রস্ত" },
+];
 
 export default function ReturnForm() {
   const [orderNumber, setOrderNumber] = useState("");
   const [productName, setProductName] = useState("");
+  const [productId, setProductId] = useState("");
   const [reason, setReason] = useState("");
+  const [condition, setCondition] = useState("");
+  const [qty, setQty] = useState("1");
   const [refund, setRefund] = useState("");
   const [restock, setRestock] = useState(true);
   const [msg, setMsg] = useState(null);
@@ -17,10 +28,13 @@ export default function ReturnForm() {
     e.preventDefault();
     setBusy(true);
     setMsg(null);
-    const res = await addReturn({
+    const res = await createReturn({
       order_number: orderNumber,
       product_name: productName,
+      product_id: productId,
       reason,
+      condition: condition || undefined,
+      qty,
       refund_bdt: refund,
       restock,
     });
@@ -31,7 +45,10 @@ export default function ReturnForm() {
       setMsg({ kind: "ok", text: "রিটার্ন সংরক্ষিত হয়েছে" });
       setOrderNumber("");
       setProductName("");
+      setProductId("");
       setReason("");
+      setCondition("");
+      setQty("1");
       setRefund("");
       setRestock(true);
     }
@@ -56,6 +73,37 @@ export default function ReturnForm() {
           placeholder="পণ্যের নাম"
           required
           className="border border-gray-200 rounded-lg px-3 py-2 text-sm w-44 focus:outline-none focus:ring-2 focus:ring-emerald-200"
+        />
+      </div>
+      <div>
+        <label className="block text-xs text-gray-500 mb-1">পণ্য আইডি</label>
+        <input
+          value={productId}
+          onChange={(e) => setProductId(e.target.value)}
+          placeholder="ঐচ্ছিক (UUID)"
+          className="border border-gray-200 rounded-lg px-3 py-2 text-sm w-40 focus:outline-none focus:ring-2 focus:ring-emerald-200"
+        />
+      </div>
+      <div>
+        <label className="block text-xs text-gray-500 mb-1">কন্ডিশন</label>
+        <select
+          value={condition}
+          onChange={(e) => setCondition(e.target.value)}
+          className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-200"
+        >
+          {CONDITIONS.map((c) => (
+            <option key={c.value} value={c.value}>{c.label}</option>
+          ))}
+        </select>
+      </div>
+      <div>
+        <label className="block text-xs text-gray-500 mb-1">পরিমাণ</label>
+        <input
+          type="number"
+          min="1"
+          value={qty}
+          onChange={(e) => setQty(e.target.value)}
+          className="border border-gray-200 rounded-lg px-3 py-2 text-sm w-20 focus:outline-none focus:ring-2 focus:ring-emerald-200"
         />
       </div>
       <div>

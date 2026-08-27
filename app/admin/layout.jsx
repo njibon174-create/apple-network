@@ -22,16 +22,17 @@ export default async function AdminLayout({ children }) {
   const nav = [
     { href: "/admin", label: "ড্যাশবোর্ড", icon: "LayoutDashboard" },
     { href: "/admin/orders", label: "অর্ডার", icon: "ShoppingBag" },
+    { href: "/admin/crm", label: "CRM", icon: "Users" },
     { href: "/admin/messages", label: "মেসেজ", icon: "MessageSquare" },
     { href: "/admin/pos", label: "পয়েন্ট অফ সেল", icon: "Store" },
     { href: "/admin/stock/add", label: "নতুন স্টক", icon: "Plus" },
     { href: "/admin/stock", label: "ইনভেন্টরি", icon: "Package" },
     { href: "/admin/customers", label: "কাস্টমার", icon: "Users" },
-    { href: "/admin/credit", label: "বাকি / EMI", icon: "Wallet" },
+    { href: "/admin/credit", label: "ক্রেডিট ম্যানেজমেন্ট", icon: "Wallet" },
     { href: "/admin/cash", label: "ক্যাশ বুক", icon: "Wallet" },
     { href: "/admin/expenses", label: "খরচ", icon: "Receipt" },
-    { href: "/admin/returns", label: "রিটার্ন", icon: "Undo2" },
-    { href: "/admin/reports", label: "প্রফিট-লস", icon: "BarChart3" },
+    { href: "/admin/returns", label: "রিটার্ন ম্যানেজমেন্ট", icon: "Undo2" },
+    { href: "/admin/reports", label: "রিপোর্টস", icon: "BarChart3" },
   ];
 
   return (

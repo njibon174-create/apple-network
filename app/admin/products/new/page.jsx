@@ -1,4 +1,4 @@
-// app/admin/products/new/page.jsx — create product (Phase B)
+// app/admin/products/new/page.jsx — create product (with brand/model).
 import { createClient } from "@/lib/supabase/server";
 import ProductForm from "@/components/admin/ProductForm";
 

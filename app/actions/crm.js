@@ -1,0 +1,384 @@
+// app/actions/crm.js — CRM server actions (owner-only).
+// Covers: customer profile read/update, multi-phone management, multi-address
+// management, type tracking with audit log, and a unified activity log.
+"use server";
+import { revalidatePath } from "next/cache";
+import { createClient } from "@/lib/supabase/server";
+
+// ── helpers ────────────────────────────────────────────────────────────────
+
+function sbNow() {
+  return new Date().toISOString();
+}
+
+async function logActivity(sb, customerId, kind, summary, detail = null) {
+  await sb
+    .from("customer_activity_log")
+    .insert({
+      customer_id: customerId,
+      kind,
+      summary,
+      detail: detail ? JSON.stringify(detail) : null,
+    })
+    .then(() => {})
+    .catch((e) => console.error("activity log insert skipped:", e));
+}
+
+// ── customer profile ───────────────────────────────────────────────────────
+
+export async function getCustomer(id) {
+  const sb = await createClient();
+  const { data: customer } = await sb
+    .from("customers")
+    .select("id, name, phone, email, type, note, created_at, updated_at")
+    .eq("id", id)
+    .maybeSingle();
+  if (!customer) return null;
+
+  const { data: phones } = await sb
+    .from("customer_phones")
+    .select("id, phone, label, is_primary, created_at")
+    .eq("customer_id", id)
+    .order("is_primary", { ascending: false })
+    .order("created_at", { ascending: false });
+
+  const { data: addresses } = await sb
+    .from("customer_addresses")
+    .select("id, label, full_address, area, city, division, zip, phone, is_default, created_at, updated_at")
+    .eq("customer_id", id)
+    .order("is_default", { ascending: false })
+    .order("created_at", { ascending: false });
+
+  const { data: typeLog } = await sb
+    .from("customer_type_log")
+    .select("id, from_type, to_type, reason, created_at")
+    .eq("customer_id", id)
+    .order("created_at", { ascending: false });
+
+  const { data: activities } = await sb
+    .from("customer_activity_log")
+    .select("id, kind, summary, detail, created_at")
+    .eq("customer_id", id)
+    .order("created_at", { ascending: false })
+    .limit(500);
+
+  // enrich activity detail JSON
+  const enriched = (activities || []).map((a) => ({
+    ...a,
+    detail: a.detail ? JSON.parse(a.detail) : null,
+  }));
+
+  // Fetch credit summary.
+  const { data: creditSummary } = await sb
+    .from("credit_sales")
+    .select("id, total_due, amount_paid, due_date, status")
+    .eq("customer_id", id);
+  const creditSalesList = creditSummary || [];
+  const totalCreditDue = creditSalesList.reduce((s, c) => s + c.total_due, 0);
+  const totalCreditPaid = creditSalesList.reduce((s, c) => s + c.amount_paid, 0);
+
+  const { data: emiList } = await sb
+    .from("emis")
+    .select("id, total_bdt, months, monthly_bdt, paid_months, status")
+    .eq("customer_id", id);
+  const emiRemaining = (emiList || []).reduce((s, e) => s + e.total_bdt - e.monthly_bdt * e.paid_months, 0);
+
+  return {
+    ...customer,
+    phones: phones || [],
+    addresses: addresses || [],
+    typeLog: typeLog || [],
+    activities: enriched,
+    credit_sales: creditSalesList,
+    total_credit_due: totalCreditDue,
+    total_credit_paid: totalCreditPaid,
+    emi_remaining: emiRemaining,
+    credit_outstanding: totalCreditDue - totalCreditPaid + emiRemaining,
+  };
+}
+
+export async function updateCustomerProfile(id, { name, email, note, type }) {
+  const sb = await createClient();
+  const cur = await getCustomer(id);
+  if (!cur) return { error: "কাস্টমার পাওয়া যায়নি" };
+
+  const patch = {};
+  if (name !== undefined && name !== cur.name) patch.name = name;
+  if (email !== undefined && email !== cur.email) patch.email = email;
+  if (note !== undefined && note !== cur.note) patch.note = note;
+  if (type !== undefined && type !== cur.type) patch.type = type;
+
+  if (type && type !== cur.type) {
+    await sb
+      .from("customer_type_log")
+      .insert({
+        customer_id: id,
+        from_type: cur.type,
+        to_type: type,
+        reason: note || "টাইপ পরিবর্তন",
+      })
+      .then(() => {})
+      .catch((e) => console.error("type log insert skipped:", e));
+  }
+
+  if (Object.keys(patch).length) {
+    await sb
+      .from("customers")
+      .update({ ...patch, updated_at: sbNow() })
+      .eq("id", id);
+  }
+
+  // always log an activity so the profile view shows a live audit trail
+  await logActivity(
+    sb,
+    id,
+    "customer_updated",
+    `প্রোফাইল আপডেট: ${Object.keys(patch).map((k) => k === "type" ? `টাইপ → ${type}` : `${k} পরিবর্তন`).join(", ")}`,
+    { patch }
+  );
+
+  revalidatePath("/admin/crm");
+  revalidatePath("/admin/crm/" + id);
+  return { ok: true };
+}
+
+// ── phones ──────────────────────────────────────────────────────────────────
+
+export async function addPhone(customerId, { phone, label }) {
+  const sb = await createClient();
+  if (!phone || !phone.trim()) return { error: "ফোন নম্বর দিন" };
+  const clean = phone.trim();
+
+  // duplicate check
+  const { data: dup } = await sb
+    .from("customer_phones")
+    .select("id")
+    .eq("customer_id", customerId)
+    .eq("phone", clean)
+    .maybeSingle();
+  if (dup) return { error: "এই নম্বরটি ইতিমধ্যে যোগ করা আছে" };
+
+  const isPrimary = !(await sb.from("customer_phones").select("id").eq("customer_id", customerId).maybeSingle());
+  const { data: row } = await sb
+    .from("customer_phones")
+    .insert({
+      customer_id: customerId,
+      phone: clean,
+      label: label || null,
+      is_primary: isPrimary,
+    })
+    .select("id, phone, label, is_primary, created_at")
+    .single();
+
+  await logActivity(
+    sb,
+    customerId,
+    "phone_added",
+    `নতুন ফোন নম্বর: ${clean}${isPrimary ? " (প্রাথমিক)" : ""}`,
+    { phone: clean, label, isPrimary }
+  );
+
+  revalidatePath("/admin/crm/" + customerId);
+  return { ok: true, phone: row };
+}
+
+export async function removePhone(customerId, phoneId) {
+  const sb = await createClient();
+  const { data: phone } = await sb
+    .from("customer_phones")
+    .select("id, phone, is_primary")
+    .eq("id", phoneId)
+    .eq("customer_id", customerId)
+    .maybeSingle();
+  if (!phone) return { error: "ফোন পাওয়া যায়নি" };
+  if (phone.is_primary) return { error: "প্রাথমিক নম্বরটি মুছতে পারবেন না — অন্য নম্বরটিকে প্রাথমিক করুন" };
+
+  await sb.from("customer_phones").delete().eq("id", phoneId);
+
+  await logActivity(sb, customerId, "phone_removed", `ফোন নম্বর মুছেছে: ${phone.phone}`, { phone: phone.phone });
+
+  revalidatePath("/admin/crm/" + customerId);
+  return { ok: true };
+}
+
+export async function setPrimaryPhone(customerId, phoneId) {
+  const sb = await createClient();
+  const { data: phone } = await sb
+    .from("customer_phones")
+    .select("id, phone, is_primary")
+    .eq("id", phoneId)
+    .eq("customer_id", customerId)
+    .maybeSingle();
+  if (!phone) return { error: "ফোন পাওয়া যায়নি" };
+
+  // unset all primary for this customer, set the chosen one
+  await sb
+    .from("customer_phones")
+    .update({ is_primary: false })
+    .eq("customer_id", customerId);
+  await sb
+    .from("customer_phones")
+    .update({ is_primary: true })
+    .eq("id", phoneId);
+
+  await logActivity(
+    sb,
+    customerId,
+    "phone_set_primary",
+    `প্রাথমিক ফোন পরিবর্তন: ${phone.phone}`,
+    { phone: phone.phone }
+  );
+
+  revalidatePath("/admin/crm/" + customerId);
+  return { ok: true };
+}
+
+// ── addresses ───────────────────────────────────────────────────────────────
+
+export async function addAddress(customerId, {
+  label, full_address, area, city, division, zip, phone, is_default
+}) {
+  const sb = await createClient();
+  if (!full_address || !full_address.trim()) return { error: "ঠিকানা দিন" };
+  const isDef = is_default === true;
+
+  // if this is the first address or marked default, clear other defaults
+  if (isDef) {
+    await sb
+      .from("customer_addresses")
+      .update({ is_default: false })
+      .eq("customer_id", customerId);
+  }
+
+  const { data: row } = await sb
+    .from("customer_addresses")
+    .insert({
+      customer_id: customerId,
+      label: label || "বাড়ি",
+      full_address: full_address.trim(),
+      area: area || null,
+      city: city || null,
+      division: division || null,
+      zip: zip || null,
+      phone: phone || null,
+      is_default: isDef,
+    })
+    .select("id, label, full_address, area, city, division, zip, phone, is_default, created_at, updated_at")
+    .single();
+
+  await logActivity(
+    sb,
+    customerId,
+    "address_added",
+    `ঠিকানা যোগ: ${label || "বাড়ি"} — ${full_address.trim()}`,
+    { addressId: row.id, label: label || "বাড়ি", full_address: full_address.trim() }
+  );
+
+  revalidatePath("/admin/crm/" + customerId);
+  return { ok: true, address: row };
+}
+
+export async function updateAddress(customerId, addressId, {
+  label, full_address, area, city, division, zip, phone, is_default
+}) {
+  const sb = await createClient();
+  const cur = await sb
+    .from("customer_addresses")
+    .select("id, full_address, is_default")
+    .eq("id", addressId)
+    .eq("customer_id", customerId)
+    .maybeSingle();
+  if (!cur) return { error: "ঠিকানা পাওয়া যায়নি" };
+  if (!full_address || !full_address.trim()) return { error: "ঠিকানা দিন" };
+
+  const isDef = is_default === true;
+  if (isDef && !cur.is_default) {
+    await sb
+      .from("customer_addresses")
+      .update({ is_default: false })
+      .eq("customer_id", customerId);
+  }
+
+  const patch = { full_address: full_address.trim() };
+  if (label !== undefined) patch.label = label;
+  if (area !== undefined) patch.area = area;
+  if (city !== undefined) patch.city = city;
+  if (division !== undefined) patch.division = division;
+  if (zip !== undefined) patch.zip = zip;
+  if (phone !== undefined) patch.phone = phone;
+  if (is_default !== undefined) patch.is_default = is_def;
+
+  await sb.from("customer_addresses").update({ ...patch, updated_at: sbNow() }).eq("id", addressId);
+
+  await logActivity(
+    sb,
+    customerId,
+    "address_updated",
+    `ঠিকানা আপডেট: ${label || cur.label || "বাড়ি"} — ${full_address.trim()}`,
+    { addressId, patch }
+  );
+
+  revalidatePath("/admin/crm/" + customerId);
+  return { ok: true };
+}
+
+export async function removeAddress(customerId, addressId) {
+  const sb = await createClient();
+  const { data: addr } = await sb
+    .from("customer_addresses")
+    .select("id, label, full_address")
+    .eq("id", addressId)
+    .eq("customer_id", customerId)
+    .maybeSingle();
+  if (!addr) return { error: "ঠিকানা পাওয়া যায়নি" };
+
+  await sb.from("customer_addresses").delete().eq("id", addressId);
+
+  await logActivity(
+    sb,
+    customerId,
+    "address_removed",
+    `ঠিকানা মুছেছে: ${addr.label || "বাড়ি"} — ${addr.full_address}`,
+    { addressId: addr.id }
+  );
+
+  revalidatePath("/admin/crm/" + customerId);
+  return { ok: true };
+}
+
+// ── type change (dedicated, auditable) ──────────────────────────────────────
+
+export async function changeCustomerType(customerId, toType, reason) {
+  const sb = await createClient();
+  const cur = await getCustomer(customerId);
+  if (!cur) return { error: "কাস্টমার পাওয়া যায়নি" };
+  if (toType === cur.type) return { ok: true };
+
+  await sb
+    .from("customers")
+    .update({ type: toType, updated_at: sbNow() })
+    .eq("id", customerId);
+
+  await sb
+    .from("customer_type_log")
+    .insert({
+      customer_id: customerId,
+      from_type: cur.type,
+      to_type: toType,
+      reason: reason || null,
+    })
+    .then(() => {})
+    .catch((e) => console.error("type log insert skipped:", e));
+
+  await logActivity(
+    sb,
+    customerId,
+    "type_changed",
+    `টাইপ পরিবর্তন: ${cur.type} → ${toType}${reason ? ` (${reason})` : ""}`,
+    { fromType: cur.type, toType, reason }
+  );
+
+  revalidatePath("/admin/crm/" + customerId);
+  revalidatePath("/admin/crm");
+  return { ok: true };
+}

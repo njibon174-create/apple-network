@@ -1,14 +1,33 @@
 "use client";
-
 import { useState } from "react";
 import { addCashTxn } from "@/app/actions/cash";
 import Icon from "@/components/Icon";
+
+const TYPES = [
+  { value: "capital_in", label: "মূলধন প্রবেশ" },
+  { value: "capital_out", label: "মূলধন বাহির" },
+  { value: "sale", label: "বিক্রয় প্রাপ্তি" },
+  { value: "expense", label: "খরচ" },
+  { value: "refund", label: "রিফান্ড" },
+];
+
+const CHANNELS = [
+  { value: "online", label: "অনলাইন" },
+  { value: "pos", label: "POS" },
+  { value: "credit", label: "ক্রেডিট" },
+  { value: "emi", label: "EMI" },
+  { value: "capital", label: "মূলধন" },
+  { value: "refund", label: "রিফান্ড" },
+  { value: "expense", label: "খরচ" },
+  { value: "other", label: "অন্যান্য" },
+];
 
 export default function CashForm() {
   const [type, setType] = useState("capital_in");
   const [amount, setAmount] = useState("");
   const [ref, setRef] = useState("");
   const [note, setNote] = useState("");
+  const [channel, setChannel] = useState("other");
   const [msg, setMsg] = useState(null);
   const [busy, setBusy] = useState(false);
 
@@ -16,7 +35,13 @@ export default function CashForm() {
     e.preventDefault();
     setBusy(true);
     setMsg(null);
-    const res = await addCashTxn({ type, amount_bdt: amount, ref, note });
+    const res = await addCashTxn({
+      type,
+      amount_bdt: amount,
+      ref,
+      note,
+      channel,
+    });
     setBusy(false);
     if (res?.error) {
       setMsg({ kind: "err", text: res.error });
@@ -25,20 +50,34 @@ export default function CashForm() {
       setAmount("");
       setRef("");
       setNote("");
+      setChannel("other");
     }
   }
 
   return (
-    <form onSubmit={submit} className="flex flex-wrap items-end gap-3">
+    <form onSubmit={submit} className="flex flex-wrap items-end gap-3 max-w-xl w-full">
       <div>
         <label className="block text-xs text-gray-500 mb-1">ধরন</label>
         <select
           value={type}
           onChange={(e) => setType(e.target.value)}
-          className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-200"
+          className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-200 w-40"
         >
-          <option value="capital_in">মূলধন প্রবেশ</option>
-          <option value="capital_out">মূলধন বাহির</option>
+          {TYPES.map((t) => (
+            <option key={t.value} value={t.value}>{t.label}</option>
+          ))}
+        </select>
+      </div>
+      <div>
+        <label className="block text-xs text-gray-500 mb-1">চ্যানেল</label>
+        <select
+          value={channel}
+          onChange={(e) => setChannel(e.target.value)}
+          className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-200 w-36"
+        >
+          {CHANNELS.map((c) => (
+            <option key={c.value} value={c.value}>{c.label}</option>
+          ))}
         </select>
       </div>
       <div>

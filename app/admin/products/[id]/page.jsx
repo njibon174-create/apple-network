@@ -1,4 +1,4 @@
-// app/admin/products/[id]/page.jsx — edit product (Phase B)
+// app/admin/products/[id]/page.jsx — edit product (with brand/model).
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import ProductForm from "@/components/admin/ProductForm";
@@ -7,10 +7,12 @@ export const dynamic = "force-dynamic";
 
 export default async function EditProduct({ params }) {
   const sb = await createClient();
-  const [{ data: product }, { data: categories }] = await Promise.all([
-    sb.from("products").select("*").eq("id", params.id).maybeSingle(),
-    sb.from("categories").select("id, name_bn, name_en, slug").order("name_bn"),
-  ]);
+  const [{ data: product }, { data: categories }, { data: brands }] =
+    await Promise.all([
+      sb.from("products").select("*").eq("id", params.id).maybeSingle(),
+      sb.from("categories").select("id, name_bn, name_en, slug").order("name_bn"),
+      sb.from("brands").select("id, name_bn, name_en").order("sort_order"),
+    ]);
 
   if (!product) notFound();
 
