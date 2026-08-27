@@ -1,7 +1,7 @@
 // app/admin/orders/page.jsx — Order Management (server component, read-only).
 // Renders every order as a row in a table with full details, pipeline tags, and actions.
 import { sbAdminOrders } from "@/lib/orders-admin";
-import OrderRow from "./OrderRow";
+import OrderCard from "./OrderCard";
 
 export const dynamic = "force-dynamic";
 
@@ -34,7 +34,7 @@ export default async function OrdersPage({ searchParams }) {
   ];
 
   return (
-    <div className="min-w-[800px]">
+    <div>
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-ink">অর্ডার ম্যানেজমেন্ট</h1>
@@ -69,33 +69,16 @@ export default async function OrdersPage({ searchParams }) {
         </div>
       ) : (
         <div className="rounded-xl2 border border-gray-100 bg-white overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-ink-muted border-b border-gray-100">
-                <th className="py-3 pr-2 whitespace-nowrap">অর্ডার</th>
-                <th className="py-3 pr-3 whitespace-nowrap">তারিখ</th>
-                <th className="py-3 pr-3 whitespace-nowrap">সোর্স</th>
-                <th className="py-3 pr-3 whitespace-nowrap">কাস্টমার</th>
-                <th className="py-3 pr-3 whitespace-nowrap">ফোন</th>
-                <th className="py-3 pr-3 whitespace-nowrap">ঠিকানা</th>
-                <th className="py-3 pr-3 whitespace-nowrap">পেমেন্ট</th>
-                <th className="py-3 pr-3 text-right whitespace-nowrap">টোটাল</th>
-                <th className="py-3 pr-3 whitespace-nowrap">অবস্থা</th>
-                <th className="py-3 pr-3 whitespace-nowrap">ট্যাগ</th>
-                <th className="py-3 pr-3 whitespace-nowrap">একশন</th>
-              </tr>
-            </thead>
-            <tbody>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
               {orders.map((o) => (
-                <OrderRow
+                <OrderCard
                   key={o.order_number}
                   order={o}
                   statusLabel={STATUS_LABEL}
                   sourceLabel={SOURCE_LABEL}
                 />
               ))}
-            </tbody>
-          </table>
+            </div>
         </div>
       )}
 

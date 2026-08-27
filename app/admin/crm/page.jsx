@@ -60,18 +60,27 @@ export default async function CRMListPage({
 
   query = query.order("created_at", { ascending: false });
 
-  const { data: customers, error } = await query;
+  let customers = [];
+  let queryError = null;
+  try {
+    const res = await query;
+    customers = res.data || [];
+    queryError = res.error || null;
+  } catch (e) {
+    queryError = e;
+  }
 
-  if (error) {
-    console.error("CRM list query failed:", error);
+  if (queryError) {
+    console.error("CRM list query failed:", queryError);
     return (
       <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-red-700">
         <p>কাস্টমার তালিকা লোড করতে ব্যর্থ — পেজ রিফ্রেশ করে আবার চেষ্টা করুন।</p>
+        <p className="mt-2 text-xs opacity-80">{String(queryError?.message || queryError)}</p>
       </div>
     );
   }
 
-  const rows = customers || [];
+  const rows = customers;
 
   return (
     <div>

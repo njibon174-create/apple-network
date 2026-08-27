@@ -62,11 +62,18 @@ export async function getCustomer(id) {
     .order("created_at", { ascending: false })
     .limit(500);
 
-  // enrich activity detail JSON
-  const enriched = (activities || []).map((a) => ({
-    ...a,
-    detail: a.detail ? JSON.parse(a.detail) : null,
-  }));
+  // enrich activity detail JSON safely
+  const enriched = (activities || []).map((a) => {
+    let detail = a.detail;
+    if (typeof detail === "string") {
+      try {
+        detail = JSON.parse(detail);
+      } catch {
+        detail = null;
+      }
+    }
+    return { ...a, detail };
+  });
 
   // Fetch credit summary.
   const { data: creditSummary } = await sb
@@ -306,7 +313,7 @@ export async function updateAddress(customerId, addressId, {
   if (division !== undefined) patch.division = division;
   if (zip !== undefined) patch.zip = zip;
   if (phone !== undefined) patch.phone = phone;
-  if (is_default !== undefined) patch.is_default = is_def;
+  if (is_default !== undefined) patch.is_default = Boolean(is_default);
 
   await sb.from("customer_addresses").update({ ...patch, updated_at: sbNow() }).eq("id", addressId);
 
