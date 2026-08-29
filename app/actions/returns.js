@@ -7,16 +7,16 @@ import { createClient } from "@/lib/supabase/server";
 
 // ── create return ────────────────────────────────────────────────────────
 export async function createReturn({
+  order_number,
+  product_name,
+  product_id,
+  reason,
+  condition,
+  qty,
+  refund_bdt,
+  restock,
+}) {
   try {
-    order_number,
-    product_name,
-    product_id,
-    reason,
-    condition,
-    qty,
-    refund_bdt,
-    restock,
-  }) {
     const sb = await createClient();
     const name = (product_name || "").trim();
     const pid = product_id || null;

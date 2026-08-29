@@ -174,7 +174,7 @@ export async function getCustomer(id) {
     return result;
   } catch (error) {
     console.error("Error in crm.js:", error);
-    return { success: false, error: error.message || \"An unexpected error occurred\" };
+    return { success: false, error: error.message || "An unexpected error occurred" };
   }
 }
 
@@ -224,7 +224,7 @@ export async function updateCustomerProfile(id, { name, email, note, type }) {
     return { ok: true };
   } catch (error) {
     console.error(\"Error in crm.js:\", error);
-    return { success: false, error: error.message || \"An unexpected error occurred\" };
+    return { success: false, error: error.message || "An unexpected error occurred" };
   }
 }
 
@@ -329,7 +329,7 @@ export async function addPhone(customerId, { phone, label }) {
     return { ok: true, phone: row };
   } catch (error) {
     console.error(\"Error in crm.js:\", error);
-    return { success: false, error: error.message || \"An unexpected error occurred\" };
+    return { success: false, error: error.message || "An unexpected error occurred" };
   }
 }
 
@@ -353,7 +353,7 @@ export async function removePhone(customerId, phoneId) {
     return { ok: true };
   } catch (error) {
     console.error(\"Error in crm.js:\", error);
-    return { success: false, error: error.message || \"An unexpected error occurred\" };
+    return { success: false, error: error.message || "An unexpected error occurred" };
   }
 }
 
@@ -390,7 +390,7 @@ export async function setPrimaryPhone(customerId, phoneId) {
     return { ok: true };
   } catch (error) {
     console.error(\"Error in crm.js:\", error);
-    return { success: false, error: error.message || \"An unexpected error occurred\" };
+    return { success: false, error: error.message || "An unexpected error occurred" };
   }
 }
 
@@ -440,7 +440,7 @@ export async function addAddress(customerId, {
     return { ok: true, address: row };
   } catch (error) {
     console.error(\"Error in crm.js:\", error);
-    return { success: false, error: error.message || \"An unexpected error occurred\" };
+    return { success: false, error: error.message || "An unexpected error occurred" };
   }
 }
 
@@ -489,7 +489,7 @@ export async function updateAddress(customerId, addressId, {
     return { ok: true };
   } catch (error) {
     console.error(\"Error in crm.js:\", error);
-    return { success: false, error: error.message || \"An unexpected error occurred\" };
+    return { success: false, error: error.message || "An unexpected error occurred" };
   }
 }
 
@@ -518,7 +518,7 @@ export async function removeAddress(customerId, addressId) {
     return { ok: true };
   } catch (error) {
     console.error(\"Error in crm.js:\", error);
-    return { success: false, error: error.message || \"An unexpected error occurred\" };
+    return { success: false, error: error.message || "An unexpected error occurred" };
   }
 }
 
@@ -558,6 +558,6 @@ export async function changeCustomerType(customerId, toType, reason) {
     return { ok: true };
   } catch (error) {
     console.error(\"Error in crm.js:\", error);
-    return { success: false, error: error.message || \"An unexpected error occurred\" };
+    return { success: false, error: error.message || "An unexpected error occurred" };
   }
 }
