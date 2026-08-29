@@ -24,9 +24,17 @@ export default async function CustomersPage() {
           <h1 className="text-2xl font-bold text-ink">কাস্টমার ইঞ্জিন</h1>
           <p className="text-sm text-ink-muted">আপনার সকল কাস্টমার এবং তাদের ক্রেডিট হিস্ট্রি ম্যানেজ করুন।</p>
         </div>
-        <button className="flex items-center gap-2 rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-600">
-          <Icon name="Plus" size={16} /> নতুন কাস্টমার
-        </button>
+        <div className="flex gap-3">
+          <Link 
+            href="/admin-v2/sales/direct"
+            className="flex items-center gap-2 rounded-xl bg-white border border-gray-200 px-4 py-2 text-sm font-semibold text-ink transition hover:bg-gray-50 shadow-sm"
+          >
+            <Icon name="ShoppingCart" size={16} /> ডাইরেক্ট সেল
+          </Link>
+          <button className="flex items-center gap-2 rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-600">
+            <Icon name="Plus" size={16} /> নতুন কাস্টমার
+          </button>
+        </div>
       </div>
 
       <div className="rounded-2xl border border-gray-100 bg-white shadow-sm overflow-hidden">

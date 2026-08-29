@@ -125,7 +125,9 @@ export default async function Customer360View({ params }) {
                 <div key={act.id} className="p-4 hover:bg-gray-50 transition-colors">
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-sm font-semibold text-ink">{act.summary}</span>
-                    <span className="text-[10px] text-gray-400">{new Date(act.created_at).toLocaleString("bn-BD")}</span>
+                    <span className="text-[10px] text-gray-400">
+  {act.created_at ? new Date(act.created_at).toLocaleString("bn-BD") : "Unknown Date"}
+</span>
                   </div>
                   <p className="text-xs text-gray-500">{act.detail || ""}</p>
                 </div>
