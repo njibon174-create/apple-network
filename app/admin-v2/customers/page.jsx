@@ -31,9 +31,6 @@ export default async function CustomersPage() {
           >
             <Icon name="ShoppingCart" size={16} /> ডাইরেক্ট সেল
           </Link>
-          <button className="flex items-center gap-2 rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-600">
-            <Icon name="Plus" size={16} /> নতুন কাস্টমার
-          </button>
         </div>
       </div>
 

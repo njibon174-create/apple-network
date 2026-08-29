@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { taka } from "@/lib/data";
 import Icon from "@/components/Icon";
-import { createClient } from "@/lib/supabase/client"; // Assuming client helper exists or use standard supabase-js
+import { createClient } from "@/lib/supabase/client";
 
 export default function DirectSaleController({ initialProducts, initialCustomers }) {
   const [cart, setCart] = useState([]);
@@ -12,7 +12,9 @@ export default function DirectSaleController({ initialProducts, initialCustomers
   const [selectedCustomer, setSelectedCustomer] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const [isAddingCustomer, setIsAddingCustomer] = useState(false);
-  const [newCustomer, setNewCustomer] = useState({ name: "", phone: "" });
+  const [newCustomer, setNewCustomer] = useState({ name: "", phone: "+880" });
+  const [discount, setDiscount] = useState(0);
+  const [downPayment, setDownPayment] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
@@ -49,24 +51,33 @@ export default function DirectSaleController({ initialProducts, initialCustomers
     setCart(prev => prev.filter(item => item.id !== id));
   };
 
-  const calculateTotal = () => {
+  const calculateGrossTotal = () => {
     return cart.reduce((sum, item) => sum + (item.price_bdt * item.qty), 0);
+  };
+
+  const calculateNetTotal = () => {
+    const gross = calculateGrossTotal();
+    return Math.max(0, gross - discount);
   };
 
   const handleSale = async (formData) => {
     setIsLoading(true);
     try {
       const sb = createClient();
-      const total = calculateTotal();
+      const netTotal = calculateNetTotal();
 
-      // 1. Record Income
-      await sb.from("cash_book").insert({
-        amount: total,
-        type: "income",
-        category: "Direct Sale",
-        description: `Direct Sale to ${selectedCustomer ? 'Customer ID: ' + selectedCustomer : 'Walk-in'}`,
-        created_at: new Date().toISOString(),
-      });
+      // 1. Record Income (Down payment or full cash)
+      const actualIncome = paymentMethod === 'cash' ? netTotal : parseFloat(downPayment || 0);
+      
+      if (actualIncome > 0) {
+        await sb.from("cash_book").insert({
+          amount: actualIncome,
+          type: "income",
+          category: "Direct Sale",
+          description: `Direct Sale to ${selectedCustomer ? 'Customer ID: ' + selectedCustomer : 'Walk-in'}. Total: ${taka(netTotal)}, Paid: ${taka(actualIncome)}`,
+          created_at: new Date().toISOString(),
+        });
+      }
 
       // 2. Update Stock for each item
       for (const item of cart) {
@@ -80,17 +91,27 @@ export default function DirectSaleController({ initialProducts, initialCustomers
 
       // 3. Credit handling
       if (paymentMethod === "credit" && selectedCustomer) {
-        await sb.from("credit_sales").insert({
-          customer_id: selectedCustomer,
-          amount: total,
-          created_at: new Date().toISOString(),
-        });
-        // Note: In a real app, we'd call the RPC to increment credit_outstanding
+        const creditAmount = netTotal - parseFloat(downPayment || 0);
+        if (creditAmount > 0) {
+          await sb.from("credit_sales").insert({
+            customer_id: selectedCustomer,
+            amount: creditAmount,
+            created_at: new Date().toISOString(),
+          });
+          
+          // We assume a Supabase RPC exists for updating the total outstanding
+          await sb.rpc("increment_customer_credit", { 
+            customer_id: selectedCustomer, 
+            amount: creditAmount 
+          });
+        }
       }
 
       alert("বিক্রয় সফলভাবে সম্পন্ন হয়েছে!");
       setCart([]);
       setSelectedCustomer("");
+      setDiscount(0);
+      setDownPayment(0);
     } catch (e) {
       console.error(e);
       alert("Error completing sale");
@@ -100,7 +121,7 @@ export default function DirectSaleController({ initialProducts, initialCustomers
   };
 
   const handleQuickCustomer = async () => {
-    if (!newCustomer.name || !newCustomer.phone) return;
+    if (!newCustomer.name || newCustomer.phone.length < 12) return;
     try {
       const sb = createClient();
       const { data, error } = await sb.from("customers").insert({
@@ -112,6 +133,7 @@ export default function DirectSaleController({ initialProducts, initialCustomers
       if (error) throw error;
       setSelectedCustomer(data.id);
       setIsAddingCustomer(false);
+      setNewCustomer({ name: "", phone: "+880" });
     } catch (e) {
       alert("Customer creation failed");
     }
@@ -234,12 +256,16 @@ export default function DirectSaleController({ initialProducts, initialCustomers
                   value={newCustomer.name}
                   onChange={e => setNewCustomer({...newCustomer, name: e.target.value})}
                 />
-                <input 
-                  placeholder="ফোন নম্বর" 
-                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm" 
-                  value={newCustomer.phone}
-                  onChange={e => setNewCustomer({...newCustomer, phone: e.target.value})}
-                />
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">+880</span>
+                  <input 
+                    placeholder="১৭XXXXXXXX" 
+                    maxLength={11}
+                    className="w-full rounded-lg border border-gray-200 pl-12 pr-3 py-2 text-sm" 
+                    value={newCustomer.phone.replace("+880", "")}
+                    onChange={e => setNewCustomer({...newCustomer, phone: "+880" + e.target.value.slice(0, 11)})}
+                  />
+                </div>
                 <div className="flex gap-2">
                   <button onClick={handleQuickCustomer} className="flex-1 py-2 bg-brand text-white text-xs font-bold rounded-lg">সেভ করুন</button>
                   <button onClick={() => setIsAddingCustomer(false)} className="flex-1 py-2 bg-gray-200 text-gray-600 text-xs font-bold rounded-lg">বাতিল</button>
@@ -267,11 +293,43 @@ export default function DirectSaleController({ initialProducts, initialCustomers
             </div>
           </div>
 
+          {/* Adjustments Section */}
+          <div className="space-y-4 pt-4 border-t border-gray-100">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="block text-xs font-bold text-gray-400 uppercase">ডিসকাউন্ট (৳)</label>
+                <input 
+                  type="number" 
+                  value={discount}
+                  onChange={e => setDiscount(parseFloat(e.target.value) || 0)}
+                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-brand" 
+                  placeholder="0"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="block text-xs font-bold text-gray-400 uppercase">ডাউন পেমেন্ট (৳)</label>
+                <input 
+                  type="number" 
+                  value={downPayment}
+                  onChange={e => setDownPayment(parseFloat(e.target.value) || 0)}
+                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-brand" 
+                  placeholder="0"
+                />
+              </div>
+            </div>
+          </div>
+
           {/* Total & Final Action */}
           <div className="pt-6 border-t border-gray-100 space-y-4">
             <div className="flex justify-between items-end">
-              <span className="text-sm font-bold text-gray-400 uppercase">মোট বিল</span>
-              <span className="text-3xl font-bold text-ink">{taka(calculateTotal())}</span>
+              <div className="space-y-1">
+                <p className="text-[10px] font-bold text-gray-400 uppercase">গ্রস টোটাল: {taka(calculateGrossTotal())}</p>
+                <p className="text-[10px] font-bold text-red-400 uppercase">ডিসকাউন্ট: -{taka(discount)}</p>
+              </div>
+              <div className="text-right">
+                <span className="text-xs font-bold text-gray-400 uppercase block">নেট মোট</span>
+                <span className="text-3xl font-bold text-ink">{taka(calculateNetTotal())}</span>
+              </div>
             </div>
             <button 
               disabled={cart.length === 0 || isLoading || (paymentMethod === 'credit' && !selectedCustomer)}
