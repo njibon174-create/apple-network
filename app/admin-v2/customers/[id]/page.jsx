@@ -5,7 +5,6 @@ import { taka } from "@/lib/data";
 import Icon from "@/components/Icon";
 import Link from "next/link";
 import QuickSellModal from "../QuickSellModal"; // We will reuse the modal but ensure it's in v2
-import CRMProfileSection from "../CRMProfileSection"; // We will migrate this to v2
 
 export const dynamic = "force-dynamic";
 
