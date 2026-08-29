@@ -115,7 +115,7 @@ export default async function AdminV2Dashboard() {
         <div className="lg:col-span-2 rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-lg font-bold text-ink">সাম্প্রতিক অ্যাক্টিভিটি</h2>
-            <Link href="/admin-v2/customers" className="text-xs font-medium text-brand hover:underline">সব দেখুন</Link>
+            <Link href="/admin-v2/activity-logs" className="text-xs font-medium text-brand hover:underline">সব দেখুন</Link>
           </div>
           <div className="space-y-4">
             {data.activities.map((act, i) => (
