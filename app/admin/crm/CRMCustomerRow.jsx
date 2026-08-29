@@ -74,8 +74,9 @@ export default function CRMCustomerRow({ c }) {
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
             <Link
-              href={`/admin/crm/${c.id}`}
-              className="font-semibold text-ink hover:text-brand truncate"
+              href={c.id ? `/admin/crm/${c.id}` : "#"}
+              className={`font-semibold transition ${c.id ? "text-ink hover:text-brand truncate" : "text-ink-muted cursor-not-allowed truncate"}`}
+              onClick={(e) => !c.id && e.preventDefault()}
             >
               {c.name || "—"}
             </Link>
