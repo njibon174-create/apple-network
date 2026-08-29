@@ -109,7 +109,7 @@ export default async function AdminV2Dashboard() {
         <div className="lg:col-span-2 rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-lg font-bold text-ink">সাম্প্রতিক অ্যাক্টিভিটি</h2>
-            <button className="text-xs font-medium text-brand hover:underline">সব দেখুন</button>
+            <Link href="/admin-v2/finance/all-transactions" className="text-xs font-medium text-brand hover:underline">সব দেখুন</Link>
           </div>
           <div className="space-y-4">
             <div className="flex items-center justify-between p-3 rounded-lg bg-gray-50 border border-gray-100">

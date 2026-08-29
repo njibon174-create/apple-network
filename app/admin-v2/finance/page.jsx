@@ -92,7 +92,7 @@ export default async function FinanceHub() {
         <div className="lg:col-span-2 rounded-2xl border border-gray-100 bg-white shadow-sm">
           <div className="flex items-center justify-between border-b border-gray-100 p-6">
             <h2 className="text-lg font-bold text-ink">লেনদেন লেজার</h2>
-            <button className="text-xs font-medium text-brand hover:underline">সব দেখুন</button>
+            <Link href="/admin-v2/finance/all-transactions" className="text-xs font-medium text-brand hover:underline">সব দেখুন</Link>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
