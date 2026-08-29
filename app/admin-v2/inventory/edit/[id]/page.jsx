@@ -136,7 +136,7 @@ export default async function EditProductPage({ params }) {
                 />
               </div>
               <div>
-                <label className, "block text-xs font-bold text-gray-400 uppercase mb-1">আগের মূল্য (৳)</label>
+                <label className="block text-xs font-bold text-gray-400 uppercase mb-1">আগের মূল্য (৳)</label>
                 <input 
                   name="regular_price" 
                   type="number" 
