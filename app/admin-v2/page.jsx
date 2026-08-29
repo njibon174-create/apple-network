@@ -2,6 +2,7 @@
 import { createClient } from "@/lib/supabase/server";
 import Icon from "@/components/Icon";
 import { taka } from "@/lib/data";
+import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
