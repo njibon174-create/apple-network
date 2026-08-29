@@ -6,10 +6,10 @@ import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
-async function getKPIs() {
+async function getDashboardData() {
   const sb = await createClient();
   
-  // 1. Daily Revenue (Cash Book)
+  // 1. Daily Revenue
   const today = new Date().toISOString().split('T')[0];
   const { data: cashData } = await sb
     .from("cash_transactions")
@@ -38,16 +38,23 @@ async function getKPIs() {
     .eq("status", "new");
   const pendingOrders = orderData?.length || 0;
 
-  return { dailyRevenue, totalOutstanding, lowStockCount, pendingOrders };
+  // 5. Recent Activity Logs (Actual Logs, not Ledger)
+  const { data: activities } = await sb
+    .from("customer_activity_log")
+    .select("*, customers(name)")
+    .order("created_at", { ascending: false })
+    .limit(5);
+
+  return { dailyRevenue, totalOutstanding, lowStockCount, pendingOrders, activities: activities || [] };
 }
 
 export default async function AdminV2Dashboard() {
-  const kpis = await getKPIs();
+  const data = await getDashboardData();
 
   const widgets = [
     { 
       label: \"আজকের রেভিনিউ\", 
-      value: taka(kpis.dailyRevenue), 
+      value: taka(data.dailyRevenue), 
       icon: \"TrendingUp\", 
       color: \"text-green-600\", 
       bg: \"bg-green-50\", 
@@ -55,7 +62,7 @@ export default async function AdminV2Dashboard() {
     },
     { 
       label: \"মোট বাকি (Credit)\", 
-      value: taka(kpis.totalOutstanding), 
+      value: taka(data.totalOutstanding), 
       icon: \"AlertCircle\", 
       color: \"text-red-600\", 
       bg: \"bg-red-50\", 
@@ -63,7 +70,7 @@ export default async function AdminV2Dashboard() {
     },
     { 
       label: \"স্টক সতর্কতা\", 
-      value: `${kpis.lowStockCount}টি`, 
+      value: `${data.lowStockCount}টি`, 
       icon: \"Package\", 
       color: \"text-amber-600\", 
       bg: \"bg-amber-50\", 
@@ -71,7 +78,7 @@ export default async function AdminV2Dashboard() {
     },
     { 
       label: \"পেন্ডিং অর্ডার\", 
-      value: `${kpis.pendingOrders}টি`, 
+      value: `${data.pendingOrders}টি\", 
       icon: \"Clock\", 
       color: \"text-brand\", 
       bg: \"bg-brand-light\", 
@@ -86,5 +93,4 @@ export default async function AdminV2Dashboard() {
         <p className=\"text-sm text-ink-muted\">স্বাগতম! আপনার ব্যবসার বর্তমান অবস্থা এখানে দেখুন।</p>
       </div>
 
-      {/* KPI Grid */}
-      <div className=\"grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4\">\n        {widgets.map((w, i) => (\n          <div key={i} className=\"rounded-2xl border border-gray-100 bg-white p-6 shadow-sm transition-all hover:shadow-md\">\n            <div className=\"flex items-center justify-between\">\n              <div className={`rounded-lg ${w.bg} p-2`}>\n                <Icon name={w.icon} size={20} className={w.color} />\n              </div>\n              <span className=\"text-[10px] font-bold uppercase tracking-wider text-gray-400\">Live</span>\n            </div>\n            <div className=\"mt-4\">\n              <p className=\"text-sm font-medium text-ink-soft\">{w.label}</p>\n              <h3 className={`text-2xl font-bold ${w.color}`}>{w.value}</h3>\n              <p className=\"mt-1 text-[11px] text-gray-400\">{w.desc}</p>\n            </div>\n          </div>\n        ))}\n      </div>\n\n      {/* Quick Actions Section */}\n      <div className=\"grid grid-cols-1 gap-6 lg:grid-cols-3\">\n        <div className=\"lg:col-span-2 rounded-2xl border border-gray-100 bg-white p-6 shadow-sm\">\n          <div className=\"mb-4 flex items-center justify-between\">\n            <h2 className=\"text-lg font-bold text-ink\">সাম্প্রতিক অ্যাক্টিভিটি</h2>\n            <Link href=\"/admin-v2/finance/all-transactions\" className=\"text-xs font-medium text-brand hover:underline\">সব দেখুন</Link>\n          </div>\n          <div className=\"space-y-4\">\n            <div className=\"flex items-center justify-between p-3 rounded-lg bg-gray-50 border border-gray-100\">\n              <div className=\"flex items-center gap-3\">\n                <div className=\"h-8 w-8 rounded-full bg-brand/10 flex items-center justify-center text-brand\">\n                  <Icon name=\"ArrowUpRight\" size={14} />\n                </div>\n                <div>\n                  <p className=\"text-sm font-medium text-ink\">নতুন ক্যাশ সেল রেকর্ড করা হয়েছে</p>\n                  <p className=\"text-[11px] text-gray-400\">২ মিনিট আগে</p>\n                </div>\n              </div>\n              <span className=\"text-sm font-bold text-green-600\">+৳১২,০০০</span>\n            </div>\n            <div className=\"flex items-center justify-between p-3 rounded-lg bg-gray-50 border border-gray-100\">\n              <div className=\"flex items-center gap-3\">\n                <div className=\"h-8 w-8 rounded-full bg-red-100 flex items-center justify-center text-red-600\">\n                  <Icon name=\"AlertTriangle\" size={14} />\n                </div>\n                <div>\n                  <p className=\"text-sm font-medium text-ink\">iPhone 15 Pro স্টক শেষ</p>\n                  <p className=\"text-[11px] text-gray-400\">১ ঘণ্টা আগে</p>\n                </div>\n              </div>\n              <button className=\"text-xs font-medium text-brand hover:underline\">স্টক আপডেট</button>\n            </div>\n          </div>\n        </div>\n\n        <div className=\"rounded-2xl border border-gray-100 bg-white p-6 shadow-sm\">\n          <h2 className=\"mb-4 text-lg font-bold text-ink\">কুইক অ্যাকশন</h2>\n          <div className=\"grid grid-cols-1 gap-3\">\n            <Link href=\"/admin-v2/inventory/new\" className=\"flex items-center gap-3 rounded-xl border border-gray-100 bg-gray-50 p-3 text-sm font-medium text-ink transition hover:bg-brand-light hover:text-brand group\">\n              <Icon name=\"PlusCircle\" size={18} className=\"text-gray-400 group-hover:text-brand\" />\n              নতুন প্রোডাক্ট যোগ করুন\n            </Link>\n            <Link href=\"/admin-v2/customers/new\" className=\"flex items-center gap-3 rounded-xl border border-gray-100 bg-gray-50 p-3 text-sm font-medium text-ink transition hover:bg-brand-light hover:text-brand group\">\n              <Icon name=\"Users\" size={18} className=\"text-gray-400 group-hover:text-brand\" />\n              নতুন কাস্টমার তৈরি করুন\n            </Link>\n            <Link href=\"/admin-v2/sales/direct\" className=\"flex items-center gap-3 rounded-xl bg-brand p-3 text-sm font-medium text-white transition hover:bg-brand-600 group\">\n              <Icon name=\"ShoppingCart\" size={18} />\n              সরাসরি বিক্রয় (Quick Sell)\n            </Link>\n          </div>\n        </div>\n      </div>\n    </div>\n  );\n}
+      <div className=\"grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4\">\n        {widgets.map((w, i) => (\n          <div key={i} className=\"rounded-2xl border border-gray-100 bg-white p-6 shadow-sm transition-all hover:shadow-md\">\n            <div className=\"flex items-center justify-between\">\n              <div className={`rounded-lg ${w.bg} p-2`}>\n                <Icon name={w.icon} size={20} className={w.color} />\n              </div>\n              <span className=\"text-[10px] font-bold uppercase tracking-wider text-gray-400\">Live</span>\n            </div>\n            <div className=\"mt-4\">\n              <p className=\"text-sm font-medium text-ink-soft\">{w.label}</p>\n              <h3 className={`text-2xl font-bold ${w.color}`}>{w.value}</h3>\n              <p className=\"mt-1 text-[11px] text-gray-400\">{w.desc}</p>\n            </div>\n          </div>\n        ))}\n      </div>\n\n      <div className=\"grid grid-cols-1 gap-6 lg:grid-cols-3\">\n        <div className=\"lg:col-span-2 rounded-2xl border border-gray-100 bg-white p-6 shadow-sm\">\n          <div className=\"mb-4 flex items-center justify-between\">\n            <h2 className=\"text-lg font-bold text-ink\">সাম্প্রতিক অ্যাক্টিভিটি</h2>\n            <Link href=\"/admin-v2/customers\" className=\"text-xs font-medium text-brand hover:underline\">সব দেখুন</Link>\n          </div>\n          <div className=\"space-y-4\">\n            {data.activities.map((act, i) => (\n              <div key={i} className=\"flex items-center justify-between p-3 rounded-lg bg-gray-50 border border-gray-100\">\n                <div className=\"flex items-center gap-3\">\n                  <div className=\"h-8 w-8 rounded-full bg-brand/10 flex items-center justify-center text-brand\">\n                    <Icon name=\"Activity\" size={14} />\n                  </div>\n                  <div>\n                    <p className=\"text-sm font-medium text-ink\">{act.summary}</p>\n                    <p className=\"text-[11px] text-gray-400\">{act.customers?.name || 'System'} · {new Date(act.created_at).toLocaleString(\"bn-BD\")}</p>\n                  </div>\n                </div>\n                <div className=\"text-xs text-gray-400\">{act.detail ? 'বিস্তারিত আছে' : ''}</div>\n              </div>\n            ))}\n            {data.activities.length === 0 && (\n              <div className=\"p-10 text-center text-gray-400 text-sm italic\">কোনো সাম্প্রতিক অ্যাক্টিভিটি পাওয়া যায়নি।</div>\n            )}\n          </div>\n        </div>\n\n        <div className=\"rounded-2xl border border-gray-100 bg-white p-6 shadow-sm\">\n          <h2 className=\"mb-4 text-lg font-bold text-ink\">কুইক অ্যাকশন</h2>\n          <div className=\"grid grid-cols-1 gap-3\">\n            <Link href=\"/admin-v2/inventory/new\" className=\"flex items-center gap-3 rounded-xl border border-gray-100 bg-gray-50 p-3 text-sm font-medium text-ink transition hover:bg-brand-light hover:text-brand group\">\n              <Icon name=\"PlusCircle\" size={18} className=\"text-gray-400 group-hover:text-brand\" />\n              নতুন প্রোডাক্ট যোগ করুন\n            </Link>\n            <Link href=\"/admin-v2/customers/new\" className=\"flex items-center gap-3 rounded-xl border border-gray-100 bg-gray-50 p-3 text-sm font-medium text-ink transition hover:bg-brand-light hover:text-brand group\">\n              <Icon name=\"Users\" size={18} className=\"text-gray-400 group-hover:text-brand\" />\n              নতুন কাস্টমার তৈরি করুন\n            </Link>\n            <Link href=\"/admin-v2/sales/direct\" className=\"flex items-center gap-3 rounded-xl bg-brand p-3 text-sm font-medium text-white transition hover:bg-brand-600 group\">\n              <Icon name=\"ShoppingCart\" size={18} />\n              সরাসরি বিক্রয় (Quick Sell)\n            </Link>\n          </div>\n        </div>\n      </div>\n    </div>\n  );\n}
