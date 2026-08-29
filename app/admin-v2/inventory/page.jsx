@@ -8,20 +8,29 @@ export const dynamic = "force-dynamic";
 
 async function getInventory() {
   const sb = await createClient();
-  const { data: products, error } = await sb.from("products").select("*, stock_ledger(qty)");
   
-  if (error) {
-    console.error("Error fetching products:", error);
+  // To prevent server-side crashes from complex joins, we fetch products and stock separately
+  const { data: products, error: pError } = await sb.from("products").select("*");
+  if (pError) {
+    console.error("Error fetching products:", pError);
     return [];
   }
 
-  // In this schema, stock is usually the sum of qty in stock_ledger for that product
-  const processed = (products || []).map(p => {
-    const totalStock = (p.stock_ledger || []).reduce((sum, entry) => sum + (entry.qty || 0), 0);
-    return { ...p, current_stock: totalStock };
+  const { data: stockData, error: sError } = await sb.from("stock_ledger").select("product_id, qty");
+  if (sError) {
+    console.error("Error fetching stock:", sError);
+  }
+
+  // Map stock to products manually to ensure stability
+  const stockMap = {};
+  (stockData || []).forEach(entry => {
+    stockMap[entry.product_id] = (stockMap[entry.product_id] || 0) + (entry.qty || 0);
   });
 
-  return processed;
+  return (products || []).map(p => ({
+    ...p,
+    current_stock: stockMap[p.id] || 0
+  }));
 }
 
 export default async function InventoryPage() {
