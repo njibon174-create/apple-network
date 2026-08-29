@@ -2,6 +2,9 @@
 import { createClient } from "@/lib/supabase/server";
 import { taka } from "@/lib/data";
 import Icon from "@/components/Icon";
+import FinanceActions from "./FinanceActions";
+
+export const dynamic = "force-dynamic";
 
 export const dynamic = "force-dynamic";
 
@@ -124,23 +127,8 @@ export default async function FinanceHub() {
 
         {/* Quick Finance Actions */}
         <div className="space-y-6">
-          <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
-            <h2 className="mb-4 text-lg font-bold text-ink">কুইক ফিন্যান্স</h2>
-            <div className="grid grid-cols-1 gap-3">
-              <button className="flex items-center gap-3 rounded-xl border border-gray-100 bg-gray-50 p-3 text-sm font-medium text-ink transition hover:bg-brand-light hover:text-brand group">
-                <Icon name="PlusCircle" size={18} className="text-gray-400 group-hover:text-brand" />
-                নতুন ইনকাম যোগ করুন
-              </button>
-              <button className="flex items-center gap-3 rounded-xl border border-gray-100 bg-gray-50 p-3 text-sm font-medium text-ink transition hover:bg-brand-light hover:text-brand group">
-                <Icon name="MinusCircle" size={18} className="text-gray-400 group-hover:text-brand" />
-                খরচ রেকর্ড করুন
-              </button>
-              <button className="flex items-center gap-3 rounded-xl border border-gray-100 bg-brand p-3 text-sm font-medium text-white transition hover:bg-brand-600 group">
-                <Icon name="ArrowDownLeft" size={18} />
-                ক্রেডিট পেমেন্ট রিসিভ
-              </button>
-            </div>
-          </div>
+          <FinanceActions />
+        </div>
           
           <div className="rounded-2xl border border-gray-100 bg-brand-light p-6 shadow-sm">
             <h3 className="text-sm font-bold text-brand mb-2">ফিন্যান্স টিপস</h3>
