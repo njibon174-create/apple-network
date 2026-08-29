@@ -8,11 +8,16 @@ export const dynamic = "force-dynamic";
 
 async function getInventory() {
   const sb = await createClient();
-  const { data: products } = await sb.from("products").select("*, stock_ledger(qty)");
+  const { data: products, error } = await sb.from("products").select("*, stock_ledger(qty)");
   
+  if (error) {
+    console.error("Error fetching products:", error);
+    return [];
+  }
+
   // In this schema, stock is usually the sum of qty in stock_ledger for that product
   const processed = (products || []).map(p => {
-    const totalStock = (p.stock_ledger || []).reduce((sum, entry) => sum + entry.qty, 0);
+    const totalStock = (p.stock_ledger || []).reduce((sum, entry) => sum + (entry.qty || 0), 0);
     return { ...p, current_stock: totalStock };
   });
 
