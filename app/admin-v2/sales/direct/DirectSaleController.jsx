@@ -99,7 +99,6 @@ export default function DirectSaleController({ initialProducts, initialCustomers
             created_at: new Date().toISOString(),
           });
           
-          // We assume a Supabase RPC exists for updating the total outstanding
           await sb.rpc("increment_customer_credit", { 
             customer_id: selectedCustomer, 
             amount: creditAmount 
@@ -141,10 +140,9 @@ export default function DirectSaleController({ initialProducts, initialCustomers
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-      {/* Left: Product Search & Cart - Takes 2 columns */}
+      {/* Left: Product Search & Cart */}
       <div className="lg:col-span-2 space-y-6">
         <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm space-y-6">
-          {/* Product Search */}
           <div className="relative">
             <label className="block text-xs font-bold text-gray-400 uppercase mb-2">প্রোডাক্ট সার্চ করুন</label>
             <div className="relative">
@@ -158,7 +156,6 @@ export default function DirectSaleController({ initialProducts, initialCustomers
               <Icon name="Search" size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             </div>
 
-            {/* Search Results Dropdown */}
             {filteredProducts.length > 0 && (
               <div className="absolute z-50 w-full mt-1 rounded-xl border border-gray-100 bg-white shadow-2xl overflow-hidden">
                 {filteredProducts.map(p => (
@@ -183,7 +180,6 @@ export default function DirectSaleController({ initialProducts, initialCustomers
             )}
           </div>
 
-          {/* Cart Items */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-bold text-ink uppercase">কার্ট আইটেমস</h3>
@@ -227,7 +223,6 @@ export default function DirectSaleController({ initialProducts, initialCustomers
         <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm space-y-6">
           <h3 className="text-sm font-bold text-ink uppercase">পেমেন্ট এবং কাস্টমার</h3>
           
-          {/* Customer Selection */}
           <div className="space-y-3">
             <label className="block text-xs font-bold text-gray-400 uppercase">কাস্টমার নির্বাচন</label>
             {!isAddingCustomer ? (
@@ -274,7 +269,6 @@ export default function DirectSaleController({ initialProducts, initialCustomers
             )}
           </div>
 
-          {/* Payment Method */}
           <div className="space-y-3">
             <label className="block text-xs font-bold text-gray-400 uppercase">পেমেন্ট পদ্ধতি</label>
             <div className="flex gap-3">
@@ -293,7 +287,6 @@ export default function DirectSaleController({ initialProducts, initialCustomers
             </div>
           </div>
 
-          {/* Adjustments Section */}
           <div className="space-y-4 pt-4 border-t border-gray-100">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -319,7 +312,6 @@ export default function DirectSaleController({ initialProducts, initialCustomers
             </div>
           </div>
 
-          {/* Total & Final Action */}
           <div className="pt-6 border-t border-gray-100 space-y-4">
             <div className="flex justify-between items-end">
               <div className="space-y-1">
