@@ -26,7 +26,8 @@ async function getOrderDetails(id) {
 }
 
 export default async function OrderDetailsPage({ params }) {
-  const order = await getOrderDetails(params.id);
+  const { id } = params;
+  const order = await getOrderDetails(id);
   if (!order) notFound();
 
   return (
@@ -52,7 +53,6 @@ export default async function OrderDetailsPage({ params }) {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Customer & Order Summary */}
         <div className="space-y-6">
           <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
             <h3 className="text-sm font-bold text-gray-400 uppercase mb-4">কাস্টমার তথ্য</h3>
@@ -91,7 +91,6 @@ export default async function OrderDetailsPage({ params }) {
           </div>
         </div>
 
-        {/* Order Items */}
         <div className="lg:col-span-2 space-y-6">
           <div className="rounded-2xl border border-gray-100 bg-white shadow-sm overflow-hidden">
             <div className="border-b border-gray-100 p-6 flex items-center justify-between">

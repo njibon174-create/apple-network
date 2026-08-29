@@ -60,7 +60,7 @@ export default function DirectSaleController({ initialProducts, initialCustomers
     return Math.max(0, gross - discount);
   };
 
-  const handleSale = async (formData) => {
+  const handleSale = async () => {
     setIsLoading(true);
     try {
       const sb = createClient();
@@ -70,9 +70,9 @@ export default function DirectSaleController({ initialProducts, initialCustomers
       const actualIncome = paymentMethod === 'cash' ? netTotal : parseFloat(downPayment || 0);
       
       if (actualIncome > 0) {
-        await sb.from("cash_book").insert({
-          amount: actualIncome,
-          type: "income",
+        await sb.from("cash_transactions").insert({
+          type: "sale",
+          amount_bdt: actualIncome,
           category: "Direct Sale",
           description: `Direct Sale to ${selectedCustomer ? 'Customer ID: ' + selectedCustomer : 'Walk-in'}. Total: ${taka(netTotal)}, Paid: ${taka(actualIncome)}`,
           created_at: new Date().toISOString(),

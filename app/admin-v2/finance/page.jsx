@@ -6,20 +6,18 @@ import FinanceActions from "./FinanceActions";
 
 export const dynamic = "force-dynamic";
 
-export const dynamic = "force-dynamic";
-
 async function getFinanceData() {
   const sb = await createClient();
 
-  // 1. Total Cash (Sum of all income - expenses)
+// 1. Total Cash (Sum of all income - expenses)
   const { data: cashTransactions } = await sb
-    .from("cash_book")
-    .select("amount, type");
+    .from("cash_transactions")
+    .select("amount_bdt, type");
   
   let totalCash = 0;
   (cashTransactions || []).forEach(t => {
-    if (t.type === "income") totalCash += t.amount;
-    else if (t.type === "expense") totalCash -= t.amount;
+    if (t.type === "sale" || t.type === "capital_in") totalCash += t.amount_bdt;
+    else if (t.type === "expense" || t.type === "capital_out" || t.type === "refund") totalCash -= t.amount_bdt;
   });
 
   // 2. Total Credit Outstanding
@@ -34,11 +32,16 @@ async function getFinanceData() {
 
   // 3. Recent Transactions
   const { data: recentLogsData } = await sb
-    .from("cash_book")
-    .select("*")
+    .from("cash_transactions")
+    .select("id, type, amount_bdt, ref, note, created_at")
     .order("created_at", { ascending: false })
     .limit(10);
-  const recentLogs = recentLogsData || [];
+  const recentLogs = (recentLogsData || []).map(log => ({
+    ...log,
+    amount: log.amount_bdt,
+    description: log.note || log.ref || "No description",
+    type: ["sale", "capital_in"].includes(log.type) ? "income" : "expense"
+  }));
 
   return { totalCash, totalCredit, recentLogs };
 }
@@ -105,7 +108,7 @@ export default async function FinanceHub() {
                 {recentLogs.map((log, i) => (
                   <tr key={i} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4 text-ink-soft">
-                      {new Date(log.created_at).toLocaleDateString("bn-BD")}
+                      {log.created_at ? new Date(log.created_at).toLocaleDateString("bn-BD") : "Unknown"}
                     </td>
                     <td className="px-6 py-4 font-medium text-ink">
                       {log.description || "কোনো বিবরণ নেই"}
@@ -128,7 +131,6 @@ export default async function FinanceHub() {
         {/* Quick Finance Actions */}
         <div className="space-y-6">
           <FinanceActions />
-        </div>
           
           <div className="rounded-2xl border border-gray-100 bg-brand-light p-6 shadow-sm">
             <h3 className="text-sm font-bold text-brand mb-2">ফিন্যান্স টিপস</h3>
