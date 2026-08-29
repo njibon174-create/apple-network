@@ -28,8 +28,8 @@ export default function OrderCard({ order, statusLabel, sourceLabel }) {
   const currentStep    = STEPS[stepIdx];
   const currentBtn     = currentStep?.btn ?? null;
   const shownSteps     = STEP_ORDER.slice(0, stepIdx + 1);
-  const isClosed       = order.status === "cancelled" || order.status === "delivered";
-  const isDelivered    = order.status === "delivered";
+  const isClosed       = order.status === "cancelled" || order.status === "delivered" || order.status === "completed" || order.status === "paid";
+  const isDelivered    = order.status === "delivered" || order.status === "completed" || order.status === "paid";
 
   function run(fn) {
     setErr(null);

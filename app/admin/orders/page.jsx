@@ -12,6 +12,8 @@ const STATUS_LABEL = {
   preparing: "প্যাকিং",
   shipping: "শিপিং",
   delivered: "ডেলিভারড",
+  completed: "কমপ্লিটেড",
+  paid: "পেইড",
   cancelled: "বাতিল",
 };
 
